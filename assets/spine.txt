@@ -1,0 +1,2 @@
+spine/libgdx.json
+spine/ray3k.json

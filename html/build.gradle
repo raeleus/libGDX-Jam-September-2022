@@ -1,0 +1,161 @@
+
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath "org.gretty:gretty:3.0.7"
+	}
+}
+apply plugin: "gwt"
+apply plugin: "war"
+apply plugin: "org.gretty"
+
+gwt {
+	gwtVersion = "$gwtFrameworkVersion" // Should match the version used for building the GWT backend. See gradle.properties.
+	maxHeapSize = '1G' // Default 256m is not enough for the GWT compiler. GWT is HUNGRY.
+	minHeapSize = '1G'
+
+	src = files(file('src/main/java')) // Needs to be in front of "modules" below.
+	modules 'com.ray3k.template.GdxDefinition'
+	devModules 'com.ray3k.template.GdxDefinitionSuperdev'
+	project.webAppDirName = 'webapp'
+
+	compiler.strict = true
+	compiler.disableCastChecking = true
+	//// The next line can be useful to uncomment if you want output that hasn't been obfuscated.
+//	compiler.style = org.wisepersist.gradle.plugins.gwt.Style.DETAILED
+    sourceLevel = 1.11
+}
+
+dependencies {
+	implementation project(':core')
+	implementation "com.badlogicgames.gdx:gdx:$gdxVersion:sources"
+    implementation 'com.github.tommyettinger:gdx-backend-gwt:1.100.1'
+    implementation 'com.github.tommyettinger:gdx-backend-gwt:1.100.1:sources'
+    api 'space.earlygrey:shapedrawer:2.5.0:sources'
+    api 'com.github.raeleus.TenPatch:tenpatch:5.2.2:sources'
+    api 'com.esotericsoftware.spine:spine-libgdx:4.0.18.1:sources'
+    api 'com.crashinvaders.vfx:gdx-vfx-core:0.5.0:sources'
+    api 'com.crashinvaders.vfx:gdx-vfx-gwt:0.5.0'
+    api 'com.crashinvaders.vfx:gdx-vfx-gwt:0.5.0:sources'
+    api 'com.crashinvaders.vfx:gdx-vfx-effects:0.5.0:sources'
+    implementation 'com.badlogicgames.gdx-controllers:gdx-controllers-core:2.2.1:sources'
+    implementation 'com.badlogicgames.gdx-controllers:gdx-controllers-gwt:2.2.1:sources'
+    api 'com.github.intrigus.gdx-freetype-gwt:gdx-freetype-gwt:1.9.10.1'
+    api 'com.github.intrigus.gdx-freetype-gwt:gdx-freetype-gwt:1.9.10.1:sources'
+    api 'com.github.raeleus:stripe:0.2.0:sources'
+    implementation 'com.github.implicit-invocation:jbump:v1.0.2:sources'
+	implementation "com.badlogicgames.gdx-video:gdx-video:1.3.2-SNAPSHOT:sources"
+	implementation "com.badlogicgames.gdx-video:gdx-video-gwt:1.3.2-SNAPSHOT"
+	implementation "com.badlogicgames.gdx-video:gdx-video-gwt:1.3.2-SNAPSHOT:sources"
+	implementation "com.github.tommyettinger:textratypist:0.7.1:sources"
+	implementation "com.github.tommyettinger:regexodus:0.1.13:sources"
+}
+
+import org.akhikhl.gretty.AppBeforeIntegrationTestTask
+import org.wisepersist.gradle.plugins.gwt.GwtSuperDev
+
+gretty.httpPort = 8080
+gretty.resourceBase = project.buildDir.path + "/gwt/draftOut"
+gretty.contextPath = "/"
+gretty.portPropertiesFileName = "TEMP_PORTS.properties"
+
+task startHttpServer (dependsOn: [draftCompileGwt]) {
+	doFirst {
+		copy {
+			from "webapp"
+			into gretty.resourceBase
+		}
+		copy {
+			from "war"
+			into gretty.resourceBase
+		}
+	}
+}
+task beforeRun(type: AppBeforeIntegrationTestTask, dependsOn: startHttpServer) {
+    // The next line allows ports to be reused instead of
+    // needing a process to be manually terminated.
+	file("build/TEMP_PORTS.properties").delete()
+	// Somewhat of a hack; uses Gretty's support for wrapping a task in
+	// a start and then stop of a Jetty server that serves files while
+	// also running the SuperDev code server.
+	integrationTestTask 'superDev'
+	
+	interactive false
+}
+
+task superDev(type: GwtSuperDev) {
+	doFirst {
+		gwt.modules = gwt.devModules
+	}
+}
+
+var outputPath = "build/dist/"
+
+task dist(dependsOn: [clean, compileGwt]) {
+    doLast {
+		file(outputPath).mkdirs()
+		copy {
+			from("build/gwt/out"){
+				exclude '**/*.symbolMap'
+			}
+			into outputPath
+		}
+		copy {
+			from("webapp") {
+				exclude 'index.html'
+				exclude 'refresh.png'
+			}
+			into outputPath
+		}
+		copy {
+			from("webapp") {
+				include 'index.html'
+				filter { String line -> line.replaceAll('<a class="superdev" .+', '') }
+			}
+			into outputPath
+		}
+		copy {
+			from "war"
+			into outputPath
+		}
+	}
+}
+
+task addSource {
+	doLast {
+		sourceSets.main.compileClasspath += files(project(':core').sourceSets.main.allJava.srcDirs)
+		
+	}
+}
+
+task distZip(type: Zip, dependsOn: dist) {
+	//// The next lines copy the dist but remove the recompile button (circling arrow) from the HTML page.
+	from('build/dist/') {
+		exclude '**/*.html'
+	}
+	from('build/dist/') {
+		include '**/*.html'
+		filter { String line -> line.replaceAll('<a class="superdev" .+', '') }
+	}
+	archiveBaseName.set("${appName}-dist")
+	//// The result will be in html/build/ with a name containing "dist".
+	destinationDir(file("build"))
+
+    doLast {
+        exec {
+            ignoreExitValue true
+            executable 'explorer.exe'
+            args '".\\build\\"'
+        }
+    }
+}
+
+tasks.compileGwt.dependsOn(addSource)
+tasks.draftCompileGwt.dependsOn(addSource)
+
+sourceCompatibility = 11.0
+sourceSets.main.java.srcDirs = [ "src/main/java/" ]
+
+eclipse.project.name = appName + "-html"
