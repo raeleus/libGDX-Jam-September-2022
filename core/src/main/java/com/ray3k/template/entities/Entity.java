@@ -215,6 +215,21 @@ public abstract class Entity {
         setCollisionBox(minX - x, minY - y, maxX - minX, maxY - minY, collisionFilter);
     }
     
+    public void setCollisionBox(SlotData slotData, SkeletonBounds skeletonBounds, CollisionFilter collisionFilter) {
+        Object[] slots = skeleton.getSlots().items;
+        Slot returnValue = null;
+        for (int i = 0, n = skeleton.getSlots().size; i < n; i++) {
+            var slot = (Slot) slots[i];
+            if (slot.getData() == slotData) {
+                returnValue = slot;
+                break;
+            }
+        }
+        
+        if (returnValue == null) return;
+        setCollisionBox(returnValue, skeletonBounds, collisionFilter);
+    }
+    
     public boolean isOutside(float left, float bottom, float width, float height) {
         return isOutside(left, bottom, width, height, 0);
     }
