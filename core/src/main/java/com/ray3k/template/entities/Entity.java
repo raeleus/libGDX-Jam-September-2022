@@ -305,6 +305,10 @@ public abstract class Entity {
     }
     
     public void handleCollisions(CollisionHandler collisionHandler) {
+        handleCollisions(collisions, collisionHandler);
+    }
+    
+    public void handleCollisions(Collisions collisions, CollisionHandler collisionHandler) {
         for (int i = 0; i < collisions.size(); i++) {
             Collision collision = collisions.get(i);
             collisionHandler.collision(collision);
