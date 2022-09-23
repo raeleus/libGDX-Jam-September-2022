@@ -318,4 +318,8 @@ public abstract class Entity {
     public interface CollisionHandler {
         void collision(Collision collision);
     }
+    
+    public Animation getAnimation(int track) {
+        return animationState.getCurrent(track).getAnimation();
+    }
 }
