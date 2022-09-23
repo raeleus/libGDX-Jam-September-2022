@@ -1,2 +1,0 @@
-bgm/audio-sample.mp3
-bgm/menu.mp3

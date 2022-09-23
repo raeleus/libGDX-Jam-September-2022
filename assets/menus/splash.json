@@ -5,18 +5,34 @@
 		"cells": [
 			{
 				"child": {
-					"class": "Label",
+					"class": "Stack",
 					"name": null,
-					"style": {
-						"clazz": "com.badlogic.gdx.scenes.scene2d.ui.Label",
-						"name": "default"
-					},
-					"text": "CLICK HERE TO PLAY",
-					"textAlignment": 8,
-					"ellipsis": false,
-					"ellipsisString": "...",
-					"wrap": false,
-					"color": null,
+					"children": [
+						{
+							"class": "Image",
+							"name": null,
+							"drawable": "splash",
+							"scaling": "fill",
+							"touchable": "enabled",
+							"visible": true
+						},
+						{
+							"class": "Label",
+							"name": null,
+							"style": {
+								"clazz": "com.badlogic.gdx.scenes.scene2d.ui.Label",
+								"name": "default"
+							},
+							"text": "CLICK TO PLAY",
+							"textAlignment": 4,
+							"ellipsis": false,
+							"ellipsisString": "...",
+							"wrap": false,
+							"color": null,
+							"touchable": "enabled",
+							"visible": true
+						}
+					],
 					"touchable": "enabled",
 					"visible": true
 				},
@@ -62,7 +78,7 @@
 		"visible": true
 	}
 ],
-"backgroundColor": null,
+"backgroundColor": "black",
 "skinPath": "skin.json",
 "packageString": "com.mygdx.game",
 "classString": "Core"

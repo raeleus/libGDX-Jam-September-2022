@@ -7,8 +7,8 @@
 				"child": {
 					"class": "Image",
 					"name": null,
-					"drawable": "libgdx-animation",
-					"scaling": "none",
+					"drawable": "title",
+					"scaling": "fit",
 					"touchable": "enabled",
 					"visible": true
 				},
@@ -185,7 +185,7 @@
 						"clazz": "com.badlogic.gdx.scenes.scene2d.ui.Label",
 						"name": "default"
 					},
-					"text": "Copyright Raymond \"Raeleus\" Buckley © 2021",
+					"text": "Copyright Raymond \"Raeleus\" Buckley © 2022",
 					"textAlignment": 8,
 					"ellipsis": false,
 					"ellipsisString": "...",
@@ -236,7 +236,7 @@
 		"visible": true
 	}
 ],
-"backgroundColor": "black",
+"backgroundColor": null,
 "skinPath": "skin.json",
 "packageString": "com.mygdx.game",
 "classString": "Core"

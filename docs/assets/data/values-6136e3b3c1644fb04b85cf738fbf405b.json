@@ -1,7 +1,0 @@
-{
-  "jump velocity" : 10.0,
-  "name" : "Raeleus",
-  "god mode" : true,
-  "id" : 10,
-  "speed limit" : [0.0, 10.0, 5.0]
-}
