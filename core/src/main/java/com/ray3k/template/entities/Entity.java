@@ -179,6 +179,15 @@ public abstract class Entity {
         skeletonBounds.update(skeleton, true);
     }
     
+    public Bone findBone(BoneData boneData) {
+        Object[] bones = skeleton.getBones().toArray();
+        for (int i = 0, n = skeleton.getBones().size; i < n; i++) {
+            Bone bone = (Bone)bones[i];
+            if (bone.getData() == boneData) return bone;
+        }
+        return null;
+    }
+    
     public void setCollisionBox(float offsetX, float offsetY, float width, float height, CollisionFilter collisionFilter) {
         bboxOriginX = offsetX;
         bboxOriginY = offsetY;
