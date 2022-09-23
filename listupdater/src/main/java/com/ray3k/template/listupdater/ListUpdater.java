@@ -3,7 +3,6 @@ package com.ray3k.template.listupdater;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.assets.AssetManager;
-import com.badlogic.gdx.assets.loaders.SkinLoader;
 import com.badlogic.gdx.assets.loaders.SkinLoader.SkinParameter;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
@@ -15,10 +14,8 @@ import com.badlogic.gdx.scenes.scene2d.ui.Button.ButtonStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox.CheckBoxStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.ImageButton.ImageButtonStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.ImageTextButton.ImageTextButtonStyle;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Label.LabelStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle;
-import com.badlogic.gdx.scenes.scene2d.ui.ProgressBar;
 import com.badlogic.gdx.scenes.scene2d.ui.ProgressBar.ProgressBarStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane.ScrollPaneStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.SelectBox.SelectBoxStyle;
@@ -37,7 +34,10 @@ import com.badlogic.gdx.utils.ObjectMap.Entry;
 import com.esotericsoftware.spine.*;
 import com.esotericsoftware.spine.attachments.*;
 import com.ray3k.stripe.FreeTypeSkinLoader;
-import com.squareup.javapoet.*;
+import com.squareup.javapoet.FieldSpec;
+import com.squareup.javapoet.JavaFile;
+import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.TypeSpec;
 
 import javax.lang.model.element.Modifier;
 import java.io.File;
@@ -364,33 +364,32 @@ public class ListUpdater {
     
     private static class LameDuckAttachmentLoader implements AttachmentLoader {
         @Override
-        public RegionAttachment newRegionAttachment(com.esotericsoftware.spine.Skin skin, String name,
-                                                    String path) {
+        public RegionAttachment newRegionAttachment(com.esotericsoftware.spine.Skin skin, String name, String path,
+                                                    Sequence sequence) {
             return new RegionAttachment(name);
         }
-        
+    
         @Override
-        public MeshAttachment newMeshAttachment(com.esotericsoftware.spine.Skin skin, String name,
-                                                String path) {
+        public MeshAttachment newMeshAttachment(com.esotericsoftware.spine.Skin skin, String name, String path,
+                                                Sequence sequence) {
             return new MeshAttachment(name);
         }
-        
+    
         @Override
-        public BoundingBoxAttachment newBoundingBoxAttachment(com.esotericsoftware.spine.Skin skin,
-                                                              String name) {
+        public BoundingBoxAttachment newBoundingBoxAttachment(com.esotericsoftware.spine.Skin skin, String name) {
             return new BoundingBoxAttachment(name);
         }
-        
+    
         @Override
         public ClippingAttachment newClippingAttachment(com.esotericsoftware.spine.Skin skin, String name) {
             return new ClippingAttachment(name);
         }
-        
+    
         @Override
         public PathAttachment newPathAttachment(com.esotericsoftware.spine.Skin skin, String name) {
             return new PathAttachment(name);
         }
-        
+    
         @Override
         public PointAttachment newPointAttachment(com.esotericsoftware.spine.Skin skin, String name) {
             return new PointAttachment(name);
