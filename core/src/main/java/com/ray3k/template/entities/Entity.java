@@ -3,6 +3,7 @@ package com.ray3k.template.entities;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+import com.dongbat.jbump.Collision;
 import com.dongbat.jbump.CollisionFilter;
 import com.dongbat.jbump.Collisions;
 import com.dongbat.jbump.Item;
@@ -301,5 +302,16 @@ public abstract class Entity {
     
     public void setBboxCenterY(float y) {
         this.y = y - bboxOriginY - bboxHeight / 2;
+    }
+    
+    public void handleCollisions(CollisionHandler collisionHandler) {
+        for (int i = 0; i < collisions.size(); i++) {
+            Collision collision = collisions.get(i);
+            collisionHandler.collision(collision);
+        }
+    }
+    
+    public interface CollisionHandler {
+        void collision(Collision collision);
     }
 }
