@@ -1,0 +1,55 @@
+{
+"skeleton": {
+	"hash": "CbYAzzAjZOg",
+	"spine": "4.1.09",
+	"x": -26.5,
+	"y": -25.5,
+	"width": 53,
+	"height": 51,
+	"images": "",
+	"audio": ""
+},
+"bones": [
+	{ "name": "root" }
+],
+"slots": [
+	{ "name": "game/trail-01", "bone": "root", "attachment": "game/trail-01" }
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"game/trail-01": {
+				"game/trail-01": {
+					"path": "game/trail-",
+					"width": 53,
+					"height": 51,
+					"sequence": { "count": 10, "digits": 2 }
+				}
+			}
+		}
+	}
+],
+"animations": {
+	"animation": {
+		"slots": {
+			"game/trail-01": {
+				"attachment": [
+					{ "time": 0.4667 }
+				]
+			}
+		},
+		"attachments": {
+			"default": {
+				"game/trail-01": {
+					"game/trail-01": {
+						"sequence": [
+							{ "mode": "once", "index": 2, "delay": 0.05 }
+						]
+					}
+				}
+			}
+		}
+	}
+}
+}

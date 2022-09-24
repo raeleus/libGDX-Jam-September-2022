@@ -240,6 +240,13 @@ public abstract class Entity {
         setCollisionBox(returnValue, skeletonBounds, collisionFilter);
     }
     
+    public void roundCollisionBox() {
+        bboxOriginX = MathUtils.round(bboxOriginX);
+        bboxOriginY = MathUtils.round(bboxOriginY);
+        bboxWidth = MathUtils.round(bboxWidth);
+        bboxHeight = MathUtils.round(bboxHeight);
+    }
+    
     public boolean isOutside(float left, float bottom, float width, float height) {
         return isOutside(left, bottom, width, height, 0);
     }

@@ -1,0 +1,129 @@
+{
+"skeleton": {
+	"hash": "m2AtFs/lWxM",
+	"spine": "4.1.09",
+	"x": -49.32,
+	"y": -46.46,
+	"width": 231.24,
+	"height": 230.93,
+	"images": "",
+	"audio": ""
+},
+"bones": [
+	{ "name": "root" },
+	{ "name": "game/chomp-neck3", "parent": "root", "length": 33.38, "x": 4.38, "y": 9.79 },
+	{ "name": "game/chomp-neck2", "parent": "game/chomp-neck3", "length": 32.41, "x": 20.8, "y": 14.51 },
+	{ "name": "game/chomp-neck", "parent": "game/chomp-neck2", "length": 36.76, "x": 21.28, "y": 20.32 },
+	{ "name": "game/chomp-head", "parent": "game/chomp-neck", "length": 67.73, "x": 19.35, "y": 9.67 },
+	{ "name": "game/chomp-head3", "parent": "game/chomp-head", "length": 127.69, "rotation": -9.59, "x": -6.56, "y": 25.53 },
+	{ "name": "game/chomp-head2", "parent": "game/chomp-head3", "length": 70.91, "rotation": 5.32, "x": 12.38, "y": -44.7 },
+	{ "name": "bone", "parent": "root", "length": 35.09, "rotation": 83.09, "x": 2.75, "y": -1.74 },
+	{ "name": "bone2", "parent": "bone", "length": 58.56, "rotation": -81.23, "x": 45.18, "y": -9.62 },
+	{ "name": "target", "parent": "root", "x": 48.87, "y": 55.35, "color": "ff3f00ff" }
+],
+"slots": [
+	{ "name": "game/chomp-neck", "bone": "game/chomp-neck", "attachment": "game/chomp-neck" },
+	{ "name": "game/chomp-neck2", "bone": "game/chomp-neck2", "attachment": "game/chomp-neck" },
+	{ "name": "game/chomp-neck3", "bone": "game/chomp-neck3", "attachment": "game/chomp-neck" },
+	{ "name": "game/chomp-head", "bone": "game/chomp-head3", "attachment": "game/chomp-head" },
+	{ "name": "game/chomp-mouth", "bone": "game/chomp-head2", "attachment": "game/chomp-mouth" },
+	{ "name": "neck", "bone": "root", "attachment": "neck" }
+],
+"ik": [
+	{
+		"name": "target",
+		"bones": [ "bone", "bone2" ],
+		"target": "target",
+		"bendPositive": false
+	}
+],
+"path": [
+	{
+		"name": "neck",
+		"order": 1,
+		"bones": [ "game/chomp-neck3", "game/chomp-neck2", "game/chomp-neck", "game/chomp-head" ],
+		"target": "neck"
+	}
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"game/chomp-head": {
+				"game/chomp-head": { "x": 45.99, "y": 10.66, "rotation": 10.41, "width": 151, "height": 161 }
+			},
+			"game/chomp-mouth": {
+				"game/chomp-mouth": { "x": 41.5, "y": -7.96, "rotation": 5.09, "width": 96, "height": 49 }
+			},
+			"game/chomp-neck": {
+				"game/chomp-neck": { "x": -5.32, "y": -0.97, "width": 54, "height": 68 }
+			},
+			"game/chomp-neck2": {
+				"game/chomp-neck": { "x": -3.87, "y": 0.97, "width": 54, "height": 68 }
+			},
+			"game/chomp-neck3": {
+				"game/chomp-neck": { "x": -2.42, "width": 54, "height": 68 }
+			},
+			"neck": {
+				"neck": {
+					"type": "path",
+					"lengths": [ 80.15, 164.16 ],
+					"vertexCount": 6,
+					"vertices": [ 1, 7, -29.51, -4.49, 1, 1, 7, -0.65, 0.71, 1, 1, 7, 38.21, 7.73, 1, 1, 8, 13.95, -0.54, 1, 1, 8, 44.41, -1.32, 1, 1, 7, 77.62, -75.85, 1 ]
+				}
+			}
+		}
+	}
+],
+"animations": {
+	"attack": {
+		"bones": {
+			"game/chomp-head2": {
+				"rotate": [
+					{ "value": 8.67 },
+					{ "time": 0.1333, "value": -20.48 },
+					{ "time": 0.2667, "value": 8.67 }
+				]
+			},
+			"game/chomp-head3": {
+				"rotate": [
+					{},
+					{ "time": 0.1333, "value": 16.82 },
+					{ "time": 0.2667 }
+				]
+			}
+		}
+	},
+	"stand": {
+		"bones": {
+			"target": {
+				"translate": [
+					{
+						"curve": [ 0.04, 0.12, 0.281, 0.41, 0.04, 3.04, 0.281, 10.6 ]
+					},
+					{
+						"time": 0.4667,
+						"x": 0.46,
+						"y": 11.94,
+						"curve": [ 0.622, 0.5, 0.778, 0, 0.622, 13.06, 0.778, 0 ]
+					},
+					{ "time": 0.9333 }
+				]
+			},
+			"game/chomp-head3": {
+				"rotate": [
+					{
+						"curve": [ 0.04, -2.82, 0.281, -9.84 ]
+					},
+					{
+						"time": 0.4667,
+						"value": -11.08,
+						"curve": [ 0.622, -12.12, 0.778, 0 ]
+					},
+					{ "time": 0.9333 }
+				]
+			}
+		}
+	}
+}
+}

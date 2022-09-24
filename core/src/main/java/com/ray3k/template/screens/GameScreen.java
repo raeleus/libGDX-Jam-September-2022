@@ -6,21 +6,21 @@ import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.Align;
+import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.ObjectMap;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
-import com.crashinvaders.vfx.effects.ChainVfxEffect;
 import com.ray3k.template.*;
+import com.ray3k.template.OgmoReader.*;
 import com.ray3k.template.entities.*;
 import com.ray3k.template.screens.DialogDebug.*;
 import com.ray3k.template.screens.DialogPause.*;
-import com.ray3k.template.vfx.*;
 import space.earlygrey.shapedrawer.ShapeDrawer;
 
 import static com.ray3k.template.Core.*;
@@ -30,7 +30,6 @@ public class GameScreen extends JamScreen {
     public static final Color BG_COLOR = new Color();
     public Stage stage;
     public boolean paused;
-    private ChainVfxEffect vfxEffect;
     private Label fpsLabel;
     
     @Override
@@ -38,9 +37,8 @@ public class GameScreen extends JamScreen {
         super.show();
     
         gameScreen = this;
-        vfxEffect = new GlitchEffect();
-        vfxManager.addEffect(vfxEffect);
-        BG_COLOR.set(Color.PINK);
+        BG_COLOR.set(Color.BLACK);
+        world.setTileMode(true);
     
         paused = false;
     
@@ -88,18 +86,14 @@ public class GameScreen extends JamScreen {
         Gdx.input.setInputProcessor(inputMultiplexer);
     
         camera = new OrthographicCamera();
+        camera.zoom = 2;
         viewport = new FitViewport(1024, 576, camera);
     
         entityController.clear();
-        BallTestEntity ballTestEntity = new BallTestEntity();
-        ballTestEntity.moveCamera = true;
-        entityController.add(ballTestEntity);
-    
-        for (int i = 0; i < 10; i++) {
-            ballTestEntity = new BallTestEntity();
-            ballTestEntity.setPosition(MathUtils.random(viewport.getWorldWidth()), MathUtils.random(viewport.getWorldHeight()));
-            entityController.add(ballTestEntity);
-        }
+
+        var ogmo = new OgmoReader();
+        ogmo.addListener(new GameOgmoAdapter());
+        ogmo.readFile(Gdx.files.internal("levels/test-level.json"));
     }
     
     @Override
@@ -109,17 +103,6 @@ public class GameScreen extends JamScreen {
             vfxManager.update(delta);
         }
         stage.act(delta);
-    
-        if (isBindingJustPressed(Binding.LEFT)) {
-            System.out.println("left");
-        }
-        if (isBindingJustPressed(Binding.UP)) {
-            System.out.println("up");
-        } else if (isBindingJustPressed(Binding.RIGHT)) {
-            System.out.println("right");
-        } else if (isBindingJustPressed(Binding.DOWN)) {
-            System.out.println("down");
-        }
         
         fpsLabel.setText(Gdx.graphics.getFramesPerSecond());
     }
@@ -135,11 +118,6 @@ public class GameScreen extends JamScreen {
         batch.begin();
         viewport.apply();
         batch.setProjectionMatrix(camera.combined);
-        shapeDrawer.setColor(isBindingPressed(Binding.LEFT) && isBindingPressed(Binding.UP) ? Color.ORANGE : Color.GREEN);
-        shapeDrawer.filledRectangle(0, 0, viewport.getWorldWidth(), viewport.getWorldHeight());
-        shapeDrawer.setColor(Color.BLUE);
-        shapeDrawer.setDefaultLineWidth(10);
-        shapeDrawer.rectangle(0, 0, viewport.getWorldWidth(), viewport.getWorldHeight());
         entityController.draw(paused ? 0 : delta);
         batch.end();
         vfxManager.endInputCapture();
@@ -162,14 +140,12 @@ public class GameScreen extends JamScreen {
     
     @Override
     public void dispose() {
-        vfxEffect.dispose();
     }
     
     @Override
     public void hide() {
         super.hide();
         vfxManager.removeAllEffects();
-        vfxEffect.dispose();
         entityController.dispose();
     }
     
@@ -181,5 +157,58 @@ public class GameScreen extends JamScreen {
     @Override
     public void resume() {
     
+    }
+    
+    private static class GameOgmoAdapter extends OgmoAdapter {
+        @Override
+        public void level(String ogmoVersion, int width, int height, int offsetX, int offsetY,
+                          ObjectMap<String, OgmoValue> valuesMap) {
+            
+        }
+    
+        @Override
+        public void layer(String name, int gridCellWidth, int gridCellHeight, int offsetX, int offsetY) {
+        
+        }
+    
+        @Override
+        public void entity(String name, int id, int x, int y, int width, int height, boolean flippedX, boolean flippedY,
+                           int originX, int originY, int rotation, Array<EntityNode> nodes,
+                           ObjectMap<String, OgmoValue> valuesMap) {
+            
+            switch (name) {
+                case "player":
+                    var player = new Player();
+                    entityController.add(player);
+                    player.teleport(x, y);
+                    break;
+                case "platform-stone":
+                    var platformStone = new Block();
+                    entityController.add(platformStone);
+                    platformStone.teleport(x, y);
+                    break;
+            }
+        }
+    
+        @Override
+        public void grid(int col, int row, int x, int y, int width, int height, int id) {
+        
+        }
+    
+        @Override
+        public void decal(int x, int y, float originX, float originY, float scaleX, float scaleY, int rotation,
+                          String texture, String folder, ObjectMap<String, OgmoValue> valuesMap) {
+            
+        }
+    
+        @Override
+        public void layerComplete() {
+        
+        }
+    
+        @Override
+        public void levelComplete() {
+        
+        }
     }
 }

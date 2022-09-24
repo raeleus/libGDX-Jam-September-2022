@@ -1,1 +1,8 @@
+spine/chomper.json
+spine/fart.json
+spine/fish.json
 spine/libGDX.json
+spine/platform-stone.json
+spine/shy.json
+spine/skid-dust.json
+spine/zebra.json

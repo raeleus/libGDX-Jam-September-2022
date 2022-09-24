@@ -1,0 +1,110 @@
+{
+"skeleton": {
+	"hash": "kw3RmzN3KCI",
+	"spine": "4.1.09",
+	"x": -31.71,
+	"y": -7.34,
+	"width": 75,
+	"height": 81.96,
+	"images": "",
+	"audio": ""
+},
+"bones": [
+	{ "name": "root" },
+	{ "name": "game/shy", "parent": "root", "length": 40.63, "x": -17.38, "y": 17.05 },
+	{ "name": "game/shy-foot-right", "parent": "game/shy", "length": 35.1, "rotation": -11.93, "x": 26.12, "y": -12.58 },
+	{ "name": "game/shy-foot-left", "parent": "game/shy", "length": 31.89, "rotation": -9.61, "x": -1.45, "y": -15 },
+	{ "name": "game/shy2", "parent": "game/shy", "length": 61.44, "rotation": 179.55, "x": 45.96, "y": 8.22 },
+	{ "name": "game/shy-shield", "parent": "game/shy", "length": 22.82, "rotation": -0.69, "x": 65.24, "y": 1.52 },
+	{ "name": "game/shy-spear", "parent": "game/shy", "length": 25.56, "rotation": 0.62, "x": 5.87, "y": 19.94 }
+],
+"slots": [
+	{ "name": "game/shy-foot-right", "bone": "game/shy-foot-right", "attachment": "game/shy-foot-right" },
+	{ "name": "game/shy", "bone": "game/shy2", "attachment": "game/shy" },
+	{ "name": "game/shy-foot-left", "bone": "game/shy-foot-left", "attachment": "game/shy-foot-left" },
+	{ "name": "game/shy-shield", "bone": "game/shy-shield" },
+	{ "name": "game/shy-spear", "bone": "game/shy-spear" }
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"game/shy": {
+				"game/shy": { "x": 22.89, "y": -13.16, "rotation": -179.55, "width": 75, "height": 72 }
+			},
+			"game/shy-foot-left": {
+				"game/shy-foot-left": { "x": 12.73, "y": 1.25, "rotation": 9.61, "width": 40, "height": 17 }
+			},
+			"game/shy-foot-right": {
+				"game/shy-foot-right": { "x": 13.69, "y": -0.12, "rotation": 11.93, "width": 41, "height": 17 }
+			},
+			"game/shy-shield": {
+				"game/shy-shield": { "x": 0.54, "y": 0.83, "rotation": 0.69, "width": 40, "height": 67 }
+			},
+			"game/shy-spear": {
+				"game/shy-spear": { "x": 1.77, "y": 11.25, "rotation": -0.62, "width": 17, "height": 121 }
+			}
+		}
+	}
+],
+"animations": {
+	"spear": {
+		"slots": {
+			"game/shy-shield": {
+				"attachment": [
+					{ "name": "game/shy-shield" }
+				]
+			},
+			"game/shy-spear": {
+				"attachment": [
+					{ "name": "game/shy-spear" }
+				]
+			}
+		}
+	},
+	"standing": {},
+	"walking": {
+		"bones": {
+			"game/shy-foot-left": {
+				"translate": [
+					{},
+					{ "time": 0.2, "x": 8.71, "y": 6.29 },
+					{ "time": 0.4, "x": 24.67, "y": -2.42 },
+					{ "time": 0.6, "x": 8.22, "y": -2.42 },
+					{ "time": 0.8 }
+				]
+			},
+			"game/shy-foot-right": {
+				"translate": [
+					{},
+					{ "time": 0.2, "x": -13.06, "y": -0.97 },
+					{ "time": 0.4, "x": -22.74 },
+					{ "time": 0.6, "x": -12.58, "y": 8.71 },
+					{ "time": 0.8 }
+				]
+			},
+			"game/shy2": {
+				"scale": [
+					{},
+					{ "time": 0.4, "x": 0.874 },
+					{ "time": 0.8 }
+				]
+			},
+			"game/shy-shield": {
+				"translate": [
+					{},
+					{ "time": 0.3333, "x": -5.5, "y": 0.55 },
+					{ "time": 0.8 }
+				]
+			},
+			"game/shy-spear": {
+				"translate": [
+					{},
+					{ "time": 0.3333, "x": 8.25 },
+					{ "time": 0.8 }
+				]
+			}
+		}
+	}
+}
+}

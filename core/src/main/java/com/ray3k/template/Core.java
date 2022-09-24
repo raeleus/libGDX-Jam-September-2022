@@ -44,7 +44,7 @@ import java.util.Objects;
 import static com.ray3k.template.Resources.*;
 
 public class Core extends JamGame {
-    public static final String PROJECT_NAME = "Template Game";
+    public static final String PROJECT_NAME = "Player's Island";
     public final static IntArray keysJustPressed = new IntArray();
     public final static IntArray buttonsJustPressed = new IntArray();
     public final static IntArray buttonsPressed = new IntArray();
@@ -87,6 +87,9 @@ public class Core extends JamGame {
     public static ShapeDrawer shapeDrawer;
     public static Transition defaultTransition;
     public static float defaultTransitionDuration;
+    public static float DEPTH_PLAYER = 20;
+    public static float DEPTH_PARTICLES = 10;
+    public static float DEPTH_PARTICLES_BEHIND = 100;
     
     public static boolean isKeyJustPressed(int key) {
         return key == Keys.ANY_KEY ? keysJustPressed.size > 0 : keysJustPressed.contains(key);
@@ -658,7 +661,7 @@ public class Core extends JamGame {
     }
     
     public enum Binding {
-        LEFT, RIGHT, UP, DOWN, SHOOT, SPECIAL, SHIELD;
+        LEFT, RIGHT, UP, DOWN, JUMP, LICK, SHOOT;
     }
     public static float bgm;
     public static float sfx;
@@ -682,7 +685,7 @@ public class Core extends JamGame {
         
         entityController = new EntityController();
         
-        world = new World<>(100);
+        world = new World<>(1000);
         defaultCollisionFilter = (item, other) -> Response.bounce;
         nullCollisionFilter = (Item, Other) -> null;
         
@@ -741,13 +744,13 @@ public class Core extends JamGame {
     }
     
     public void setDefaultBindings() {
-        addKeyBinding(Binding.LEFT, Input.Keys.LEFT);
-        addKeyBinding(Binding.RIGHT, Input.Keys.RIGHT);
-        addKeyBinding(Binding.UP, Input.Keys.UP);
-        addKeyBinding(Binding.DOWN, Input.Keys.DOWN);
-        addKeyBinding(Binding.SHOOT, Input.Keys.Z);
-        addKeyBinding(Binding.SHIELD, Input.Keys.X);
-        addKeyBinding(Binding.SPECIAL, Input.Keys.C);
+        addKeyBinding(Binding.LEFT, Keys.LEFT);
+        addKeyBinding(Binding.RIGHT, Keys.RIGHT);
+        addKeyBinding(Binding.UP, Keys.UP);
+        addKeyBinding(Binding.DOWN, Keys.DOWN);
+        addKeyBinding(Binding.SHOOT, Keys.C);
+        addKeyBinding(Binding.LICK, Keys.X);
+        addKeyBinding(Binding.JUMP, Keys.Z);
     }
     
     public static class ControllerHandler implements ControllerListener {

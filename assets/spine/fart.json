@@ -1,0 +1,57 @@
+{
+"skeleton": {
+	"hash": "chmmL1cuVrs",
+	"spine": "4.1.09",
+	"x": -97.09,
+	"y": -68.24,
+	"width": 178,
+	"height": 154,
+	"images": "",
+	"audio": ""
+},
+"bones": [
+	{ "name": "root" }
+],
+"slots": [
+	{ "name": "game/fart-01", "bone": "root", "attachment": "game/fart-01" }
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"game/fart-01": {
+				"game/fart-01": {
+					"path": "game/fart-",
+					"x": -8.09,
+					"y": 8.76,
+					"width": 178,
+					"height": 154,
+					"sequence": { "count": 16, "digits": 2 }
+				}
+			}
+		}
+	}
+],
+"animations": {
+	"animation": {
+		"slots": {
+			"game/fart-01": {
+				"attachment": [
+					{ "time": 0.8667 }
+				]
+			}
+		},
+		"attachments": {
+			"default": {
+				"game/fart-01": {
+					"game/fart-01": {
+						"sequence": [
+							{ "mode": "once", "delay": 0.05 }
+						]
+					}
+				}
+			}
+		}
+	}
+}
+}

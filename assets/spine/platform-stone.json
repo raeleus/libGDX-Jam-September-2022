@@ -1,0 +1,39 @@
+{
+"skeleton": {
+	"hash": "izGsNwTDA7s",
+	"spine": "4.1.09",
+	"x": -51.5,
+	"y": -50,
+	"width": 103,
+	"height": 100,
+	"images": "",
+	"audio": ""
+},
+"bones": [
+	{ "name": "root" }
+],
+"slots": [
+	{ "name": "game/platform-stone", "bone": "root", "attachment": "game/platform-stone" },
+	{ "name": "bbox", "bone": "root", "attachment": "bbox" }
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"bbox": {
+				"bbox": {
+					"type": "boundingbox",
+					"vertexCount": 4,
+					"vertices": [ -57.93, -50.33, -52.48, 50.88, 52.79, 54.1, 50.02, -49.35 ]
+				}
+			},
+			"game/platform-stone": {
+				"game/platform-stone": { "width": 103, "height": 100 }
+			}
+		}
+	}
+],
+"animations": {
+	"animation": {}
+}
+}

@@ -1,0 +1,47 @@
+{
+"skeleton": {
+	"hash": "TPi5Ptxk9Bs",
+	"spine": "4.1.09",
+	"x": -64.6,
+	"y": -32.38,
+	"width": 122.63,
+	"height": 79,
+	"images": "",
+	"audio": ""
+},
+"bones": [
+	{ "name": "root" },
+	{ "name": "game/fish", "parent": "root", "length": 70.03, "rotation": 1.97, "x": 10.22, "y": 1.49 },
+	{ "name": "game/fish-tail", "parent": "game/fish", "length": 58.81, "rotation": -178.84, "x": -11.24, "y": -2.03 }
+],
+"slots": [
+	{ "name": "game/fish-tail", "bone": "game/fish-tail", "attachment": "game/fish-tail" },
+	{ "name": "game/fish", "bone": "game/fish", "attachment": "game/fish" }
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"game/fish": {
+				"game/fish": { "x": 1, "y": 5.6, "rotation": -1.97, "width": 94, "height": 79 }
+			},
+			"game/fish-tail": {
+				"game/fish-tail": { "x": 28.29, "y": 1.67, "rotation": 176.86, "width": 71, "height": 44 }
+			}
+		}
+	}
+],
+"animations": {
+	"animation": {
+		"bones": {
+			"game/fish-tail": {
+				"scale": [
+					{},
+					{ "time": 0.1333, "x": 0.712 },
+					{ "time": 0.2667 }
+				]
+			}
+		}
+	}
+}
+}
