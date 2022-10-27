@@ -1,6 +1,6 @@
 {
   "ogmoVersion": "3.4.0",
-  "width": 1024,
+  "width": 2272,
   "height": 576,
   "offsetX": 0,
   "offsetY": 0,
@@ -12,7 +12,7 @@
       "offsetY": 0,
       "gridCellWidth": 8,
       "gridCellHeight": 8,
-      "gridCellsX": 128,
+      "gridCellsX": 284,
       "gridCellsY": 72,
       "entities": [
         {"name": "player", "id": 0, "_eid": "98423303", "x": 856, "y": -128, "originX": 21, "originY": 38}
@@ -25,7 +25,7 @@
       "offsetY": 0,
       "gridCellWidth": 8,
       "gridCellHeight": 8,
-      "gridCellsX": 128,
+      "gridCellsX": 284,
       "gridCellsY": 72,
       "entities": [
         {"name": "platform-stone", "id": 0, "_eid": "98449722", "x": 112, "y": 496, "originX": 51, "originY": 50},
@@ -37,14 +37,19 @@
         {"name": "platform-stone", "id": 6, "_eid": "98449722", "x": 688, "y": 496, "originX": 51, "originY": 50},
         {"name": "platform-stone", "id": 7, "_eid": "98449722", "x": 784, "y": 496, "originX": 51, "originY": 50},
         {"name": "platform-stone", "id": 8, "_eid": "98449722", "x": 880, "y": 496, "originX": 51, "originY": 50},
-        {"name": "platform-stone", "id": 9, "_eid": "98449722", "x": 1008, "y": 344, "originX": 51, "originY": 50},
+        {"name": "platform-stone", "id": 9, "_eid": "98449722", "x": 1504, "y": 320, "originX": 51, "originY": 50},
         {"name": "platform-stone", "id": 10, "_eid": "98449722", "x": 16, "y": 400, "originX": 51, "originY": 50},
         {"name": "platform-stone", "id": 11, "_eid": "98449722", "x": 16, "y": 304, "originX": 51, "originY": 50},
         {"name": "platform-stone", "id": 13, "_eid": "98449722", "x": 16, "y": 208, "originX": 51, "originY": 50},
-        {"name": "platform-stone", "id": 15, "_eid": "98449722", "x": 1008, "y": 256, "originX": 51, "originY": 50},
-        {"name": "platform-stone", "id": 16, "_eid": "98449722", "x": 1008, "y": 160, "originX": 51, "originY": 50},
-        {"name": "platform-stone", "id": 17, "_eid": "98449722", "x": 1008, "y": 72, "originX": 51, "originY": 50},
-        {"name": "platform-stone", "id": 18, "_eid": "98449722", "x": 1008, "y": -24, "originX": 51, "originY": 50}
+        {"name": "platform-stone", "id": 15, "_eid": "98449722", "x": 1504, "y": 232, "originX": 51, "originY": 50},
+        {"name": "platform-stone", "id": 16, "_eid": "98449722", "x": 1504, "y": 136, "originX": 51, "originY": 50},
+        {"name": "platform-stone", "id": 17, "_eid": "98449722", "x": 1504, "y": 48, "originX": 51, "originY": 50},
+        {"name": "platform-stone", "id": 18, "_eid": "98449722", "x": 1504, "y": -48, "originX": 51, "originY": 50},
+        {"name": "platform-stone", "id": 19, "_eid": "98449722", "x": 976, "y": 496, "originX": 51, "originY": 50},
+        {"name": "platform-stone", "id": 20, "_eid": "98449722", "x": 1072, "y": 496, "originX": 51, "originY": 50},
+        {"name": "platform-stone", "id": 21, "_eid": "98449722", "x": 1168, "y": 496, "originX": 51, "originY": 50},
+        {"name": "platform-stone", "id": 22, "_eid": "98449722", "x": 1264, "y": 496, "originX": 51, "originY": 50},
+        {"name": "platform-stone", "id": 23, "_eid": "98449722", "x": 1360, "y": 496, "originX": 51, "originY": 50}
       ]
     }
   ]

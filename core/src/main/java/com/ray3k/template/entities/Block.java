@@ -27,7 +27,7 @@ public class Block extends Entity {
     
     @Override
     public void draw(float delta) {
-        shapeDrawer.rectangle(getBboxLeft(), getBboxBottom(), skeletonBounds.getWidth(), skeletonBounds.getHeight(), Color.GREEN, 2f);
+//        shapeDrawer.rectangle(getBboxLeft(), getBboxBottom(), skeletonBounds.getWidth(), skeletonBounds.getHeight(), Color.GREEN, 2f);
     }
     
     @Override

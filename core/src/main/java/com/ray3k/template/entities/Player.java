@@ -290,8 +290,8 @@ public class Player extends Entity {
     
     @Override
     public void draw(float delta) {
-        var rect = world.getRect(item);
-        shapeDrawer.rectangle(rect.x, rect.y, rect.w, rect.h, Color.PINK, 2f);
+//        var rect = world.getRect(item);
+//        shapeDrawer.rectangle(rect.x, rect.y, rect.w, rect.h, Color.PINK, 2f);
     }
     
     @Override
