@@ -1,8 +1,8 @@
 package com.ray3k.template.entities;
 
 import com.badlogic.gdx.math.MathUtils;
-import com.dongbat.jbump.Collisions;
-import com.dongbat.jbump.Response.Result;
+import com.badlogic.gdx.physics.box2d.Contact;
+import com.badlogic.gdx.physics.box2d.Fixture;
 import com.esotericsoftware.spine.AnimationState.AnimationStateAdapter;
 import com.esotericsoftware.spine.AnimationState.TrackEntry;
 
@@ -45,12 +45,22 @@ public class SkidSmoke extends Entity {
     }
     
     @Override
-    public void projectedCollision(Result result) {
+    public void preSolve(Entity other, Fixture fixture, Contact contact) {
     
     }
     
     @Override
-    public void collision(Collisions collisions) {
+    public void beginContact(Entity other, Fixture fixture, Contact contact) {
+    
+    }
+    
+    @Override
+    public void endContact(Entity other, Fixture fixture, Contact contact) {
+    
+    }
+    
+    @Override
+    public void postSolve(Entity other, Fixture fixture, Contact contact) {
     
     }
 }

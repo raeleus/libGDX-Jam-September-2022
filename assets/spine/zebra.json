@@ -1,11 +1,11 @@
 {
 "skeleton": {
-	"hash": "6KOyoPz7bT0",
-	"spine": "4.1.09",
-	"x": -67.39,
-	"y": -11.38,
-	"width": 169.81,
-	"height": 192.62,
+	"hash": "lu9h+rxAV14",
+	"spine": "4.1.16",
+	"x": -123.7,
+	"y": -9.19,
+	"width": 211.51,
+	"height": 169.52,
 	"images": "",
 	"audio": ""
 },
@@ -84,7 +84,8 @@
 	{ "name": "game/zebra-tongue-tip", "bone": "game/zebra-tongue9", "dark": "000000" },
 	{ "name": "game/zebra-tongue_1", "bone": "game/zebra-tongue_1", "dark": "000000" },
 	{ "name": "game/zebra-hand", "bone": "hand", "dark": "000000", "attachment": "game/zebra-hand" },
-	{ "name": "bbox", "bone": "root", "attachment": "bbox" }
+	{ "name": "bbox", "bone": "root", "attachment": "bbox" },
+	{ "name": "foot-sensor", "bone": "root", "attachment": "foot-sensor" }
 ],
 "ik": [
 	{
@@ -118,6 +119,13 @@
 					"type": "boundingbox",
 					"vertexCount": 4,
 					"vertices": [ -42.51, 0.27, -43.4, 115.59, 52.7, 119.17, 52.7, -0.63 ]
+				}
+			},
+			"foot-sensor": {
+				"foot-sensor": {
+					"type": "boundingbox",
+					"vertexCount": 4,
+					"vertices": [ -46.34, 1.02, 57.99, 0.39, 57.67, -11.06, -46.34, -10.43 ]
 				}
 			},
 			"game/skel-foot-left": {

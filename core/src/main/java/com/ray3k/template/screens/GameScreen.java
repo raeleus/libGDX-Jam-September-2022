@@ -38,7 +38,6 @@ public class GameScreen extends JamScreen {
     
         gameScreen = this;
         BG_COLOR.set(Color.BLACK);
-        world.setTileMode(true);
     
         paused = false;
     
@@ -82,6 +81,8 @@ public class GameScreen extends JamScreen {
         shapeDrawer = new ShapeDrawer(batch, skin.getRegion("white"));
         shapeDrawer.setPixelSize(.5f);
     
+        debugShapeDrawer = new Box2DDebugShapeDrawer(shapeDrawer);
+    
         InputMultiplexer inputMultiplexer = new InputMultiplexer(stage, this);
         Gdx.input.setInputProcessor(inputMultiplexer);
     
@@ -119,6 +120,8 @@ public class GameScreen extends JamScreen {
         viewport.apply();
         batch.setProjectionMatrix(camera.combined);
         entityController.draw(paused ? 0 : delta);
+        shapeDrawer.setDefaultLineWidth(2f);
+        debugShapeDrawer.render(world);
         batch.end();
         vfxManager.endInputCapture();
         vfxManager.applyEffects();

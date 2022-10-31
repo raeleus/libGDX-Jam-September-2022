@@ -1,7 +1,7 @@
 {
 "skeleton": {
-	"hash": "izGsNwTDA7s",
-	"spine": "4.1.09",
+	"hash": "FS0V8QRXalo",
+	"spine": "4.1.16",
 	"x": -51.5,
 	"y": -50,
 	"width": 103,
@@ -24,7 +24,7 @@
 				"bbox": {
 					"type": "boundingbox",
 					"vertexCount": 4,
-					"vertices": [ -57.93, -50.33, -52.48, 50.88, 52.79, 54.1, 50.02, -49.35 ]
+					"vertices": [ -50.07, -48.02, -50.12, 48.87, 50.11, 48.73, 50.02, -49.35 ]
 				}
 			},
 			"game/platform-stone": {

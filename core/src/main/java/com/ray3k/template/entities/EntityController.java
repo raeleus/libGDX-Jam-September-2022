@@ -2,7 +2,6 @@ package com.ray3k.template.entities;
 
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
-import com.dongbat.jbump.Rect;
 
 import java.util.Comparator;
 
@@ -65,17 +64,11 @@ public class EntityController implements Disposable {
     public void sleep(Entity entity) {
         if (entity.sleepable) {
             entity.sleeping = true;
-            if (entity.item != null) {
-                world.remove(entity.item);
-            }
         }
     }
     
     public void wake(Entity entity) {
         entity.sleeping = false;
-        if (entity.item != null) {
-            world.add(entity.item, entity.x + entity.bboxOriginX, entity.y + entity.bboxOriginY, entity.bboxWidth, entity.bboxHeight);
-        }
     }
     
     public void add(Entity entity) {
@@ -98,11 +91,11 @@ public class EntityController implements Disposable {
         sortedEntities.sort(depthComparator);
         
         for (Entity entity : sortedEntities) {
-            if (entity.collisions != null) entity.collisions.clear();
             entity.actBefore(delta);
         }
         
         //simulate physics and call act methods
+        world.step(delta, 6, 2);
         for (Entity entity : sortedEntities) {
             if (entity.moveTargetActivated) entity.moveTargetActivated = !entity.moveTowards(entity.moveTargetSpeed, entity.moveTargetX, entity.moveTargetY, delta);
             entity.deltaX += entity.gravityX * delta;
@@ -118,28 +111,13 @@ public class EntityController implements Disposable {
                 entity.animationState.apply(entity.skeleton);
                 entity.skeletonBounds.update(entity.skeleton, true);
             }
-            
-            if (entity.item != null && world.hasItem(entity.item)) {
-                var result = world.check(entity.item, entity.x + entity.bboxOriginX, entity.y + entity.bboxOriginY, entity.collisionFilter);
-                entity.projectedCollision(result);
-                world.update(entity.item, result.goalX, result.goalY);
-                for (int i = 0; i < result.projectedCollisions.size(); i++) {
-                    var collision = result.projectedCollisions.get(i);
-                    entity.collisions.add(collision);
-                }
-                Rect rect = world.getRect(entity.item);
-                entity.x = rect.x - entity.bboxOriginX;
-                entity.y = rect.y - entity.bboxOriginY;
+            if (entity.body != null) {
+                entity.body.applyLinearImpulse(p2m(entity.deltaX * delta), p2m(entity.deltaY * delta), p2m(entity.x), p2m(entity.y), true);
+                entity.x = m2p(entity.body.getPosition().x) - entity.bboxOriginX;
+                entity.y = m2p(entity.body.getPosition().y) - entity.bboxOriginY;
             }
             
             entity.act(delta);
-        }
-        
-        //call collision methods
-        for (var entity : sortedEntities) {
-            if (entity.collisions != null && entity.collisions.size() > 0) {
-                entity.collision(entity.collisions);
-            }
         }
         
         //call destroy methods and remove the entities
@@ -147,7 +125,7 @@ public class EntityController implements Disposable {
             if (entity.destroy) {
                 entity.destroy();
                 entities.removeValue(entity, false);
-                if (entity.item != null && world.hasItem(entity.item)) world.remove(entity.item);
+                if (entity.body != null) world.destroyBody(entity.body);
             }
         }
     }
@@ -163,11 +141,6 @@ public class EntityController implements Disposable {
                     
                     skeletonRenderer.draw(batch, entity.skeleton);
                 }
-    
-                if (entity.collisionBoxDebugColor != null && shapeDrawer != null) {
-                    var rect = world.getRect(entity.item);
-                    if (rect != null) shapeDrawer.rectangle(rect.x, rect.y, rect.w, rect.h, entity.collisionBoxDebugColor, 1.0f);
-                }
                 
                 entity.draw(delta);
             }
@@ -177,7 +150,7 @@ public class EntityController implements Disposable {
     @Override
     public void dispose() {
         for (Entity entity : entities) {
-            if (entity.item != null && world.hasItem(entity.item)) world.remove(entity.item);
+            if (entity.body != null) world.destroyBody(entity.body);
             if (entity instanceof Disposable) ((Disposable) entity).dispose();
         }
         entities.clear();

@@ -1,18 +1,16 @@
 package com.ray3k.template.entities;
 
-import com.badlogic.gdx.graphics.Color;
-import com.dongbat.jbump.Collisions;
-import com.dongbat.jbump.Response.Result;
+import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
+import com.badlogic.gdx.physics.box2d.Contact;
+import com.badlogic.gdx.physics.box2d.Fixture;
 
-import static com.ray3k.template.Core.*;
 import static com.ray3k.template.Resources.SpinePlatformStone.*;
 
 public class Block extends Entity {
     @Override
     public void create() {
         setSkeletonData(skeletonData, animationData);
-        setCollisionBox(slotBbox, skeletonBounds, nullCollisionFilter);
-//        roundCollisionBox();
+        setCollisionBox(slotBbox, skeletonBounds, BodyType.StaticBody);
     }
     
     @Override
@@ -27,7 +25,7 @@ public class Block extends Entity {
     
     @Override
     public void draw(float delta) {
-//        shapeDrawer.rectangle(getBboxLeft(), getBboxBottom(), skeletonBounds.getWidth(), skeletonBounds.getHeight(), Color.GREEN, 2f);
+    
     }
     
     @Override
@@ -36,12 +34,22 @@ public class Block extends Entity {
     }
     
     @Override
-    public void projectedCollision(Result result) {
+    public void beginContact(Entity other, Fixture fixture, Contact contact) {
     
     }
     
     @Override
-    public void collision(Collisions collisions) {
+    public void preSolve(Entity other, Fixture fixture, Contact contact) {
+    
+    }
+    
+    @Override
+    public void endContact(Entity other, Fixture fixture, Contact contact) {
+    
+    }
+    
+    @Override
+    public void postSolve(Entity other, Fixture fixture, Contact contact) {
     
     }
 }

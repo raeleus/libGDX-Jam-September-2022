@@ -16,6 +16,8 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
@@ -23,9 +25,6 @@ import com.badlogic.gdx.utils.*;
 import com.badlogic.gdx.utils.ObjectIntMap.Entry;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.crashinvaders.vfx.VfxManager;
-import com.dongbat.jbump.CollisionFilter;
-import com.dongbat.jbump.Response;
-import com.dongbat.jbump.World;
 import com.esotericsoftware.spine.AnimationStateData;
 import com.esotericsoftware.spine.SkeletonData;
 import com.esotericsoftware.spine.SkeletonRenderer;
@@ -70,9 +69,9 @@ public class Core extends JamGame {
     public static SkeletonRenderer skeletonRenderer;
     public static ChangeListener sndChangeListener;
     public static EntityController entityController;
-    public static World<Entity> world;
-    public static CollisionFilter defaultCollisionFilter;
-    public static CollisionFilter nullCollisionFilter;
+    public static World world;
+    public final static float PPM = 100f;
+    public static Box2DDebugShapeDrawer debugShapeDrawer;
     public static CrossPlatformWorker crossPlatformWorker;
     public static float mouseX;
     public static float mouseY;
@@ -684,10 +683,45 @@ public class Core extends JamGame {
         skeletonRenderer.setPremultipliedAlpha(true);
         
         entityController = new EntityController();
+    
+        world = new World(new Vector2(0, 0), true);
+        world.setContactListener(new ContactListener() {
+            @Override
+            public void beginContact(Contact contact) {
+                Entity entityA = (Entity) contact.getFixtureA().getBody().getUserData();
+                Entity entityB = (Entity) contact.getFixtureB().getBody().getUserData();
+            
+                if (entityA != null) entityA.beginContact(entityB, contact.getFixtureA(), contact);
+                if (entityB != null) entityB.beginContact(entityA, contact.getFixtureA(), contact);
+            }
         
-        world = new World<>(1000);
-        defaultCollisionFilter = (item, other) -> Response.bounce;
-        nullCollisionFilter = (Item, Other) -> null;
+            @Override
+            public void endContact(Contact contact) {
+                Entity entityA = (Entity) contact.getFixtureA().getBody().getUserData();
+                Entity entityB = (Entity) contact.getFixtureB().getBody().getUserData();
+            
+                if (entityA != null) entityA.endContact(entityB, contact.getFixtureA(), contact);
+                if (entityB != null) entityB.endContact(entityA, contact.getFixtureA(), contact);
+            }
+        
+            @Override
+            public void preSolve(Contact contact, Manifold oldManifold) {
+                Entity entityA = (Entity) contact.getFixtureA().getBody().getUserData();
+                Entity entityB = (Entity) contact.getFixtureB().getBody().getUserData();
+            
+                if (entityA != null) entityA.preSolve(entityB, contact.getFixtureA(), contact);
+                if (entityB != null) entityB.preSolve(entityA, contact.getFixtureA(), contact);
+            }
+        
+            @Override
+            public void postSolve(Contact contact, ContactImpulse impulse) {
+                Entity entityA = (Entity) contact.getFixtureA().getBody().getUserData();
+                Entity entityB = (Entity) contact.getFixtureB().getBody().getUserData();
+            
+                if (entityA != null) entityA.postSolve(entityB, contact.getFixtureA(), contact);
+                if (entityB != null) entityB.postSolve(entityA, contact.getFixtureA(), contact);
+            }
+        });
         
         sndChangeListener = new ChangeListener() {
             @Override
@@ -702,6 +736,14 @@ public class Core extends JamGame {
         }));
         defaultTransition = Transitions.colorFade(Color.BLACK);
         defaultTransitionDuration = .5f;
+    }
+    
+    public static float p2m(float pixels) {
+        return pixels / PPM;
+    }
+    
+    public static float m2p(float meters) {
+        return meters * PPM;
     }
     
     @Override

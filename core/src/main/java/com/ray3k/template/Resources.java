@@ -249,6 +249,7 @@ public class Resources {
         SpineZebra.slotGameZebraTongue1 = SpineZebra.skeletonData.findSlot("game/zebra-tongue_1");
         SpineZebra.slotGameZebraHand = SpineZebra.skeletonData.findSlot("game/zebra-hand");
         SpineZebra.slotBbox = SpineZebra.skeletonData.findSlot("bbox");
+        SpineZebra.slotFootSensor = SpineZebra.skeletonData.findSlot("foot-sensor");
         SpineZebra.skinDefault = SpineZebra.skeletonData.findSkin("default");
         skin_skin = assetManager.get("skin/skin.json");
         SkinSkinStyles.lDefault = skin_skin.get("default", Label.LabelStyle.class);
@@ -698,6 +699,8 @@ public class Resources {
         public static SlotData slotGameZebraHand;
 
         public static SlotData slotBbox;
+
+        public static SlotData slotFootSensor;
 
         public static com.esotericsoftware.spine.Skin skinDefault;
     }

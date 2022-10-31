@@ -3,12 +3,10 @@ package com.ray3k.template.entities;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
-import com.dongbat.jbump.Collision;
-import com.dongbat.jbump.CollisionFilter;
-import com.dongbat.jbump.Collisions;
-import com.dongbat.jbump.Item;
-import com.dongbat.jbump.Response.Result;
+import com.badlogic.gdx.physics.box2d.*;
+import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
 import com.esotericsoftware.spine.*;
+import com.esotericsoftware.spine.attachments.BoundingBoxAttachment;
 
 import static com.ray3k.template.Core.*;
 
@@ -18,9 +16,7 @@ public abstract class Entity {
     public Skeleton skeleton;
     public AnimationState animationState;
     public SkeletonBounds skeletonBounds;
-    public Item<Entity> item;
-    public Collisions collisions;
-    public CollisionFilter collisionFilter;
+    public Body body;
     public float x;
     public float y;
     public float moveTargetX;
@@ -47,8 +43,10 @@ public abstract class Entity {
     public abstract void act(float delta);
     public abstract void draw(float delta);
     public abstract void destroy();
-    public abstract void projectedCollision(Result result);
-    public abstract void collision(Collisions collisions);
+    public abstract void beginContact(Entity other, Fixture fixture, Contact contact);
+    public abstract void endContact(Entity other, Fixture fixture, Contact contact);
+    public abstract void preSolve(Entity other, Fixture fixture, Contact contact);
+    public abstract void postSolve(Entity other, Fixture fixture, Contact contact);
     
     public void setMotion(float speed, float direction) {
         temp1.set(speed, 0);
@@ -116,14 +114,14 @@ public abstract class Entity {
     public void teleport(float x, float y) {
         this.x = x;
         this.y = y;
-        if (item != null & world.hasItem(item)) {
-            world.update(item, x, y);
+        if (body != null) {
+            body.setTransform(p2m(x), p2m(y), 0);
         }
     }
     
     public void teleport() {
-        if (item != null & world.hasItem(item)) {
-            world.update(item, x, y);
+        if (body != null) {
+            body.setTransform(p2m(x), p2m(y), 0);
         }
     }
     
@@ -189,30 +187,35 @@ public abstract class Entity {
         return null;
     }
     
-    public void setCollisionBox(float offsetX, float offsetY, float width, float height, CollisionFilter collisionFilter) {
-        bboxOriginX = offsetX;
-        bboxOriginY = offsetY;
-        bboxWidth = width;
-        bboxHeight = height;
-        this.collisionFilter = collisionFilter;
-        
-        collisions = new Collisions();
-        
-        if (item == null) {
-            item = new Item<>(this);
-            world.add(item, x + bboxOriginX, y + bboxOriginY, width, height);
-        } else {
-            world.update(item, x + bboxOriginX, y + bboxOriginY, width, height);
+    public Fixture setCollisionBox(float offsetX, float offsetY, float width, float height, BodyType bodyType) {
+        if (body == null) {
+            BodyDef bodyDef = new BodyDef();
+            bodyDef.type = bodyType;
+            bodyDef.position.set(x, y);
+            bodyDef.fixedRotation = true;
+    
+            body = world.createBody(bodyDef);
+            body.setUserData(this);
         }
+    
+        PolygonShape box = new PolygonShape();
+        temp1.set(p2m(offsetX + width / 2), p2m(offsetY + height / 2));
+        box.setAsBox(p2m(width / 2), p2m(height / 2), temp1, 0);
+    
+        var fixture = body.createFixture(box, .5f);
+        box.dispose();
+        
+        return fixture;
     }
     
     private static float[] verts;
-    public void setCollisionBox(Slot slot, SkeletonBounds skeletonBounds, CollisionFilter collisionFilter) {
+    public Fixture setCollisionBox(Slot slot, SkeletonBounds skeletonBounds, BodyType bodyType) {
         float minX = Float.MAX_VALUE;
         float minY = Float.MAX_VALUE;
         float maxX = 0;
         float maxY = 0;
-        for (var bbox : skeletonBounds.getBoundingBoxes()) {
+        var bbox = (BoundingBoxAttachment) slot.getAttachment();
+        if (bbox != null) {
             if (verts == null || verts.length < bbox.getWorldVerticesLength()) verts = new float[bbox.getWorldVerticesLength()];
             bbox.computeWorldVertices(slot, 0, bbox.getWorldVerticesLength(), verts, 0, 2);
             for (int i = 0; i < bbox.getWorldVerticesLength(); i += 2) {
@@ -222,10 +225,10 @@ public abstract class Entity {
                 if (verts[i+1] > maxY) maxY = verts[i+1];
             }
         }
-        setCollisionBox(minX - x, minY - y, maxX - minX, maxY - minY, collisionFilter);
+        return setCollisionBox(minX - x, minY - y, maxX - minX, maxY - minY, bodyType);
     }
     
-    public void setCollisionBox(SlotData slotData, SkeletonBounds skeletonBounds, CollisionFilter collisionFilter) {
+    public Fixture setCollisionBox(SlotData slotData, SkeletonBounds skeletonBounds, BodyType bodyType) {
         Object[] slots = skeleton.getSlots().items;
         Slot returnValue = null;
         for (int i = 0, n = skeleton.getSlots().size; i < n; i++) {
@@ -236,15 +239,63 @@ public abstract class Entity {
             }
         }
         
-        if (returnValue == null) return;
-        setCollisionBox(returnValue, skeletonBounds, collisionFilter);
+        if (returnValue == null) return null;
+        return setCollisionBox(returnValue, skeletonBounds, bodyType);
     }
     
-    public void roundCollisionBox() {
-        bboxOriginX = MathUtils.round(bboxOriginX);
-        bboxOriginY = MathUtils.round(bboxOriginY);
-        bboxWidth = MathUtils.round(bboxWidth);
-        bboxHeight = MathUtils.round(bboxHeight);
+    public Fixture setSensorBox(float offsetX, float offsetY, float width, float height, BodyType bodyType) {
+        if (body == null) {
+            BodyDef bodyDef = new BodyDef();
+            bodyDef.type = bodyType;
+            bodyDef.position.set(x, y);
+            bodyDef.fixedRotation = true;
+            
+            body = world.createBody(bodyDef);
+            body.setUserData(this);
+        }
+        
+        PolygonShape box = new PolygonShape();
+        temp1.set(p2m(offsetX + width / 2), p2m(offsetY + height / 2));
+        box.setAsBox(p2m(width / 2), p2m(height / 2), temp1, 0);
+        
+        var fixture = body.createFixture(box, .5f);
+        fixture.setSensor(true);
+        box.dispose();
+        return fixture;
+    }
+    
+    public Fixture setSensorBox(Slot slot, SkeletonBounds skeletonBounds, BodyType bodyType) {
+        float minX = Float.MAX_VALUE;
+        float minY = Float.MAX_VALUE;
+        float maxX = 0;
+        float maxY = 0;
+        var bbox = (BoundingBoxAttachment) slot.getAttachment();
+        if (bbox != null) {
+            if (verts == null || verts.length < bbox.getWorldVerticesLength()) verts = new float[bbox.getWorldVerticesLength()];
+            bbox.computeWorldVertices(slot, 0, bbox.getWorldVerticesLength(), verts, 0, 2);
+            for (int i = 0; i < bbox.getWorldVerticesLength(); i += 2) {
+                if (verts[i] < minX) minX = verts[i];
+                if (verts[i] > maxX) maxX = verts[i];
+                if (verts[i+1] < minY) minY = verts[i+1];
+                if (verts[i+1] > maxY) maxY = verts[i+1];
+            }
+        }
+        return setSensorBox(minX - x, minY - y, maxX - minX, maxY - minY, bodyType);
+    }
+    
+    public Fixture setSensorBox(SlotData slotData, SkeletonBounds skeletonBounds, BodyType bodyType) {
+        Object[] slots = skeleton.getSlots().items;
+        Slot foundSlot = null;
+        for (int i = 0, n = skeleton.getSlots().size; i < n; i++) {
+            var slot = (Slot) slots[i];
+            if (slot.getData() == slotData) {
+                foundSlot = slot;
+                break;
+            }
+        }
+        
+        if (foundSlot == null) return null;
+        return setSensorBox(foundSlot, skeletonBounds, bodyType);
     }
     
     public boolean isOutside(float left, float bottom, float width, float height) {
@@ -309,21 +360,6 @@ public abstract class Entity {
     
     public void setBboxCenterY(float y) {
         this.y = y - bboxOriginY - bboxHeight / 2;
-    }
-    
-    public void handleCollisions(CollisionHandler collisionHandler) {
-        handleCollisions(collisions, collisionHandler);
-    }
-    
-    public void handleCollisions(Collisions collisions, CollisionHandler collisionHandler) {
-        for (int i = 0; i < collisions.size(); i++) {
-            Collision collision = collisions.get(i);
-            collisionHandler.collision(collision);
-        }
-    }
-    
-    public interface CollisionHandler {
-        void collision(Collision collision);
     }
     
     public Animation getAnimation(int track) {
