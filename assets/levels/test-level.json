@@ -19,6 +19,75 @@
       ]
     },
     {
+      "name": "bounds",
+      "_eid": "65566193",
+      "offsetX": 0,
+      "offsetY": 0,
+      "gridCellWidth": 8,
+      "gridCellHeight": 8,
+      "gridCellsX": 284,
+      "gridCellsY": 72,
+      "entities": [
+        {
+          "name": "bounds",
+          "id": 0,
+          "_eid": "65567985",
+          "x": 64,
+          "y": 448,
+          "originX": 4,
+          "originY": 4,
+          "nodes": [
+            {"x": 1416, "y": 448},
+            {"x": 1416, "y": 552},
+            {"x": 64, "y": 544}
+          ]
+        },
+        {
+          "name": "bounds",
+          "id": 1,
+          "_eid": "65567985",
+          "x": 1456,
+          "y": 368,
+          "originX": 4,
+          "originY": 4,
+          "nodes": [
+            {"x": 1456, "y": -96},
+            {"x": 1552, "y": -96},
+            {"x": 1552, "y": 368}
+          ]
+        },
+        {
+          "name": "bounds",
+          "id": 2,
+          "_eid": "65567985",
+          "x": -32,
+          "y": 160,
+          "originX": 4,
+          "originY": 4,
+          "nodes": [
+            {"x": 64, "y": 160},
+            {"x": 64, "y": 448},
+            {"x": -32, "y": 448}
+          ]
+        },
+        {
+          "name": "bounds",
+          "id": 3,
+          "_eid": "65567985",
+          "x": 440,
+          "y": 448,
+          "originX": 4,
+          "originY": 4,
+          "nodes": [
+            {"x": 1448, "y": -112},
+            {"x": 1800, "y": -112},
+            {"x": 1768, "y": 176},
+            {"x": 1232, "y": 392}
+          ]
+        }
+      ]
+    },
+    {
       "name": "level",
       "_eid": "98452396",
       "offsetX": 0,

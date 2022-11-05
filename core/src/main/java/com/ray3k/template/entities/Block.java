@@ -10,7 +10,6 @@ public class Block extends Entity {
     @Override
     public void create() {
         setSkeletonData(skeletonData, animationData);
-        setCollisionBox(slotBbox, skeletonBounds, BodyType.StaticBody);
     }
     
     @Override

@@ -103,6 +103,14 @@ public class EntityController implements Disposable {
             
             entity.x += entity.deltaX * delta;
             entity.y += entity.deltaY * delta;
+    
+            if (entity.body != null) {
+                var center = entity.body.getMassData().center;
+                entity.body.setLinearVelocity(p2m(entity.deltaX), p2m(entity.deltaY));
+//                entity.body.applyLinearImpulse(p2m(entity.deltaX * delta), p2m(entity.deltaY * delta), center.x, center.y, true);
+                entity.x = m2p(entity.body.getPosition().x);
+                entity.y = m2p(entity.body.getPosition().y);
+            }
             
             if (entity.skeleton != null) {
                 entity.skeleton.setPosition(entity.x, entity.y);
@@ -110,11 +118,6 @@ public class EntityController implements Disposable {
                 entity.skeleton.updateWorldTransform();
                 entity.animationState.apply(entity.skeleton);
                 entity.skeletonBounds.update(entity.skeleton, true);
-            }
-            if (entity.body != null) {
-                entity.body.applyLinearImpulse(p2m(entity.deltaX * delta), p2m(entity.deltaY * delta), p2m(entity.x), p2m(entity.y), true);
-                entity.x = m2p(entity.body.getPosition().x) - entity.bboxOriginX;
-                entity.y = m2p(entity.body.getPosition().y) - entity.bboxOriginY;
             }
             
             entity.act(delta);

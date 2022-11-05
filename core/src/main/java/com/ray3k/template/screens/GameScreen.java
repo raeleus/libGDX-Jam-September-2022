@@ -6,6 +6,8 @@ import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -91,6 +93,9 @@ public class GameScreen extends JamScreen {
         viewport = new FitViewport(1024, 576, camera);
     
         entityController.clear();
+        world.dispose();
+        world = new World(new Vector2(0, 0), true);
+        world.setContactListener(worldContactListener);
 
         var ogmo = new OgmoReader();
         ogmo.addListener(new GameOgmoAdapter());
@@ -189,6 +194,19 @@ public class GameScreen extends JamScreen {
                     var platformStone = new Block();
                     entityController.add(platformStone);
                     platformStone.teleport(x, y);
+                    break;
+                case "bounds":
+                    float[] points = new float[(nodes.size + 1) * 2];
+                    for (int i = 0; i < nodes.size; i++) {
+                        var node = nodes.get(i);
+                        points[i*2] = p2m(node.x);
+                        points[i*2 + 1] = p2m(node.y);
+                    }
+                    points[points.length - 2] = p2m(x);
+                    points[points.length - 1] = p2m(y);
+                    var bounds = new Bounds(points);
+                    entityController.add(bounds);
+                    bounds.teleport(0, 0);
                     break;
             }
         }

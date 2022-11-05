@@ -188,6 +188,11 @@ public abstract class Entity {
     }
     
     public Fixture setCollisionBox(float offsetX, float offsetY, float width, float height, BodyType bodyType) {
+        bboxOriginX = offsetX;
+        bboxOriginY = offsetY;
+        bboxWidth = width;
+        bboxHeight = height;
+        
         if (body == null) {
             BodyDef bodyDef = new BodyDef();
             bodyDef.type = bodyType;
@@ -203,13 +208,14 @@ public abstract class Entity {
         box.setAsBox(p2m(width / 2), p2m(height / 2), temp1, 0);
     
         var fixture = body.createFixture(box, .5f);
+        fixture.setFriction(0);
         box.dispose();
         
         return fixture;
     }
     
     private static float[] verts;
-    public Fixture setCollisionBox(Slot slot, SkeletonBounds skeletonBounds, BodyType bodyType) {
+    public Fixture setCollisionBox(Slot slot, BodyType bodyType) {
         float minX = Float.MAX_VALUE;
         float minY = Float.MAX_VALUE;
         float maxX = 0;
@@ -228,7 +234,7 @@ public abstract class Entity {
         return setCollisionBox(minX - x, minY - y, maxX - minX, maxY - minY, bodyType);
     }
     
-    public Fixture setCollisionBox(SlotData slotData, SkeletonBounds skeletonBounds, BodyType bodyType) {
+    public Fixture setCollisionBox(SlotData slotData, BodyType bodyType) {
         Object[] slots = skeleton.getSlots().items;
         Slot returnValue = null;
         for (int i = 0, n = skeleton.getSlots().size; i < n; i++) {
@@ -240,7 +246,7 @@ public abstract class Entity {
         }
         
         if (returnValue == null) return null;
-        return setCollisionBox(returnValue, skeletonBounds, bodyType);
+        return setCollisionBox(returnValue, bodyType);
     }
     
     public Fixture setSensorBox(float offsetX, float offsetY, float width, float height, BodyType bodyType) {
@@ -264,16 +270,17 @@ public abstract class Entity {
         return fixture;
     }
     
-    public Fixture setSensorBox(Slot slot, SkeletonBounds skeletonBounds, BodyType bodyType) {
+    public Fixture setSensorBox(Slot slot, BodyType bodyType) {
         float minX = Float.MAX_VALUE;
         float minY = Float.MAX_VALUE;
-        float maxX = 0;
-        float maxY = 0;
+        float maxX = -Float.MAX_VALUE;
+        float maxY = -Float.MAX_VALUE;
         var bbox = (BoundingBoxAttachment) slot.getAttachment();
         if (bbox != null) {
             if (verts == null || verts.length < bbox.getWorldVerticesLength()) verts = new float[bbox.getWorldVerticesLength()];
             bbox.computeWorldVertices(slot, 0, bbox.getWorldVerticesLength(), verts, 0, 2);
             for (int i = 0; i < bbox.getWorldVerticesLength(); i += 2) {
+                System.out.println(verts[i] + " " + verts[i+1]);
                 if (verts[i] < minX) minX = verts[i];
                 if (verts[i] > maxX) maxX = verts[i];
                 if (verts[i+1] < minY) minY = verts[i+1];
@@ -283,7 +290,7 @@ public abstract class Entity {
         return setSensorBox(minX - x, minY - y, maxX - minX, maxY - minY, bodyType);
     }
     
-    public Fixture setSensorBox(SlotData slotData, SkeletonBounds skeletonBounds, BodyType bodyType) {
+    public Fixture setSensorBox(SlotData slotData, BodyType bodyType) {
         Object[] slots = skeleton.getSlots().items;
         Slot foundSlot = null;
         for (int i = 0, n = skeleton.getSlots().size; i < n; i++) {
@@ -295,7 +302,7 @@ public abstract class Entity {
         }
         
         if (foundSlot == null) return null;
-        return setSensorBox(foundSlot, skeletonBounds, bodyType);
+        return setSensorBox(foundSlot, bodyType);
     }
     
     public boolean isOutside(float left, float bottom, float width, float height) {

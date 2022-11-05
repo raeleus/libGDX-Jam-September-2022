@@ -70,6 +70,7 @@ public class Core extends JamGame {
     public static ChangeListener sndChangeListener;
     public static EntityController entityController;
     public static World world;
+    public static ContactListener worldContactListener;
     public final static float PPM = 100f;
     public static Box2DDebugShapeDrawer debugShapeDrawer;
     public static CrossPlatformWorker crossPlatformWorker;
@@ -685,43 +686,44 @@ public class Core extends JamGame {
         entityController = new EntityController();
     
         world = new World(new Vector2(0, 0), true);
-        world.setContactListener(new ContactListener() {
+        worldContactListener = new ContactListener() {
             @Override
             public void beginContact(Contact contact) {
                 Entity entityA = (Entity) contact.getFixtureA().getBody().getUserData();
                 Entity entityB = (Entity) contact.getFixtureB().getBody().getUserData();
-            
+        
                 if (entityA != null) entityA.beginContact(entityB, contact.getFixtureA(), contact);
                 if (entityB != null) entityB.beginContact(entityA, contact.getFixtureA(), contact);
             }
-        
+    
             @Override
             public void endContact(Contact contact) {
                 Entity entityA = (Entity) contact.getFixtureA().getBody().getUserData();
                 Entity entityB = (Entity) contact.getFixtureB().getBody().getUserData();
-            
+        
                 if (entityA != null) entityA.endContact(entityB, contact.getFixtureA(), contact);
                 if (entityB != null) entityB.endContact(entityA, contact.getFixtureA(), contact);
             }
-        
+    
             @Override
             public void preSolve(Contact contact, Manifold oldManifold) {
                 Entity entityA = (Entity) contact.getFixtureA().getBody().getUserData();
                 Entity entityB = (Entity) contact.getFixtureB().getBody().getUserData();
-            
+        
                 if (entityA != null) entityA.preSolve(entityB, contact.getFixtureA(), contact);
                 if (entityB != null) entityB.preSolve(entityA, contact.getFixtureA(), contact);
             }
-        
+    
             @Override
             public void postSolve(Contact contact, ContactImpulse impulse) {
                 Entity entityA = (Entity) contact.getFixtureA().getBody().getUserData();
                 Entity entityB = (Entity) contact.getFixtureB().getBody().getUserData();
-            
+        
                 if (entityA != null) entityA.postSolve(entityB, contact.getFixtureA(), contact);
                 if (entityB != null) entityB.postSolve(entityA, contact.getFixtureA(), contact);
             }
-        });
+        };
+        world.setContactListener(worldContactListener);
         
         sndChangeListener = new ChangeListener() {
             @Override
