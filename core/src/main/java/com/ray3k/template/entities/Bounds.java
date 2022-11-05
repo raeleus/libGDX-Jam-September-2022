@@ -1,10 +1,7 @@
 package com.ray3k.template.entities;
 
-import com.badlogic.gdx.physics.box2d.BodyDef;
+import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
-import com.badlogic.gdx.physics.box2d.Contact;
-import com.badlogic.gdx.physics.box2d.Fixture;
-import com.badlogic.gdx.physics.box2d.PolygonShape;
 
 import static com.ray3k.template.Core.*;
 
@@ -24,13 +21,13 @@ public class Bounds extends Entity {
     
         body = world.createBody(bodyDef);
         body.setUserData(this);
+        
+        var chainShape = new ChainShape();
+        chainShape.createLoop(points);
     
-        PolygonShape box = new PolygonShape();
-        box.set(points);
-    
-        var fixture = body.createFixture(box, .5f);
+        var fixture = body.createFixture(chainShape, .5f);
         fixture.setFriction(0);
-        box.dispose();
+        chainShape.dispose();
     }
     
     @Override

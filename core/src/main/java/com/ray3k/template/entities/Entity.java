@@ -280,7 +280,6 @@ public abstract class Entity {
             if (verts == null || verts.length < bbox.getWorldVerticesLength()) verts = new float[bbox.getWorldVerticesLength()];
             bbox.computeWorldVertices(slot, 0, bbox.getWorldVerticesLength(), verts, 0, 2);
             for (int i = 0; i < bbox.getWorldVerticesLength(); i += 2) {
-                System.out.println(verts[i] + " " + verts[i+1]);
                 if (verts[i] < minX) minX = verts[i];
                 if (verts[i] > maxX) maxX = verts[i];
                 if (verts[i+1] < minY) minY = verts[i+1];

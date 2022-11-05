@@ -691,9 +691,9 @@ public class Core extends JamGame {
             public void beginContact(Contact contact) {
                 Entity entityA = (Entity) contact.getFixtureA().getBody().getUserData();
                 Entity entityB = (Entity) contact.getFixtureB().getBody().getUserData();
-        
+                
                 if (entityA != null) entityA.beginContact(entityB, contact.getFixtureA(), contact);
-                if (entityB != null) entityB.beginContact(entityA, contact.getFixtureA(), contact);
+                if (entityB != null) entityB.beginContact(entityA, contact.getFixtureB(), contact);
             }
     
             @Override
@@ -702,7 +702,7 @@ public class Core extends JamGame {
                 Entity entityB = (Entity) contact.getFixtureB().getBody().getUserData();
         
                 if (entityA != null) entityA.endContact(entityB, contact.getFixtureA(), contact);
-                if (entityB != null) entityB.endContact(entityA, contact.getFixtureA(), contact);
+                if (entityB != null) entityB.endContact(entityA, contact.getFixtureB(), contact);
             }
     
             @Override
