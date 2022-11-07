@@ -692,8 +692,8 @@ public class Core extends JamGame {
                 Entity entityA = (Entity) contact.getFixtureA().getBody().getUserData();
                 Entity entityB = (Entity) contact.getFixtureB().getBody().getUserData();
                 
-                if (entityA != null) entityA.beginContact(entityB, contact.getFixtureA(), contact);
-                if (entityB != null) entityB.beginContact(entityA, contact.getFixtureB(), contact);
+                if (entityA != null) entityA.beginContact(entityB, contact.getFixtureA(), contact.getFixtureB(), contact);
+                if (entityB != null) entityB.beginContact(entityA, contact.getFixtureB(), contact.getFixtureA(), contact);
             }
     
             @Override
@@ -701,8 +701,8 @@ public class Core extends JamGame {
                 Entity entityA = (Entity) contact.getFixtureA().getBody().getUserData();
                 Entity entityB = (Entity) contact.getFixtureB().getBody().getUserData();
         
-                if (entityA != null) entityA.endContact(entityB, contact.getFixtureA(), contact);
-                if (entityB != null) entityB.endContact(entityA, contact.getFixtureB(), contact);
+                if (entityA != null) entityA.endContact(entityB, contact.getFixtureA(), contact.getFixtureB(), contact);
+                if (entityB != null) entityB.endContact(entityA, contact.getFixtureB(), contact.getFixtureA(), contact);
             }
     
             @Override
@@ -710,8 +710,8 @@ public class Core extends JamGame {
                 Entity entityA = (Entity) contact.getFixtureA().getBody().getUserData();
                 Entity entityB = (Entity) contact.getFixtureB().getBody().getUserData();
         
-                if (entityA != null) entityA.preSolve(entityB, contact.getFixtureA(), contact);
-                if (entityB != null) entityB.preSolve(entityA, contact.getFixtureA(), contact);
+                if (entityA != null) entityA.preSolve(entityB, contact.getFixtureA(), contact.getFixtureB(), contact);
+                if (entityB != null) entityB.preSolve(entityA, contact.getFixtureB(), contact.getFixtureA(), contact);
             }
     
             @Override
@@ -719,8 +719,8 @@ public class Core extends JamGame {
                 Entity entityA = (Entity) contact.getFixtureA().getBody().getUserData();
                 Entity entityB = (Entity) contact.getFixtureB().getBody().getUserData();
         
-                if (entityA != null) entityA.postSolve(entityB, contact.getFixtureA(), contact);
-                if (entityB != null) entityB.postSolve(entityA, contact.getFixtureA(), contact);
+                if (entityA != null) entityA.postSolve(entityB, contact.getFixtureA(), contact.getFixtureB(), contact);
+                if (entityB != null) entityB.postSolve(entityA, contact.getFixtureB(), contact.getFixtureA(), contact);
             }
         };
         world.setContactListener(worldContactListener);

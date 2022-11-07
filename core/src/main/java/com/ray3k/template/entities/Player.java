@@ -1,12 +1,13 @@
 package com.ray3k.template.entities;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
 import com.badlogic.gdx.physics.box2d.Contact;
 import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.utils.Array;
 import com.esotericsoftware.spine.Bone;
-import com.ray3k.template.*;
 
 import static com.ray3k.template.Core.*;
 import static com.ray3k.template.Resources.SpineZebra.*;
@@ -43,6 +44,12 @@ public class Player extends Entity {
     private Array<Entity> leftContactBlocks = new Array<>();
     private Array<Entity> headContactBlocks = new Array<>();
     private Array<Entity> collisionBoxContactBlocks = new Array<>();
+    private float slopeDownAngle;
+    private float lastSlopeAngle;
+    private static float CHECK_DISTANCE = 200;
+    
+    private boolean onSlope;
+    private static Vector2 temp = new Vector2();
     
     @Override
     public void create() {
@@ -89,29 +96,52 @@ public class Player extends Entity {
         
         switch(mode) {
             case FALLING:
-                //hit ground
                 if (footContactBlocks.size > 0) {
                     deltaY = 0;
-                    gravityY = 0;
                     mode = STANDING;
                 }
                 break;
             case STANDING:
-                if (isBindingPressed(Binding.RIGHT)) {
-                    deltaX = Utils.approach(deltaX, playerMaxWalkSpeed, playerWalkAcceleration * delta);
-                } else if (isBindingPressed(Binding.LEFT)) {
-                    deltaX = Utils.approach(deltaX, -playerMaxWalkSpeed, playerWalkAcceleration * delta);
+                onSlope = false;
+                world.rayCast((fixture, point, normal, fraction) -> {
+                    onSlope = true;
+                    return 1;
+                }, p2m(x), p2m(y), p2m(x + CHECK_DISTANCE), p2m(y));
+                world.rayCast((fixture, point, normal, fraction) -> {
+                    onSlope = true;
+                    return 1;
+                }, p2m(x), p2m(y), p2m(x - CHECK_DISTANCE), p2m(y));
+                
+                world.rayCast((fixture, point, normal, fraction) -> {
+                    slopeDownAngle = normal.angleDeg() + 90;
+                    if (!MathUtils.isEqual(slopeDownAngle, lastSlopeAngle)) {
+                        onSlope = true;
+                        lastSlopeAngle = slopeDownAngle;
+                    }
+                    return 1;
+                }, p2m(x), p2m(y), p2m(x), p2m(y - CHECK_DISTANCE));
+                
+                if (onSlope) {
+                    if (isBindingPressed(Binding.RIGHT)) {
+                        setMotion(playerMaxWalkSpeed, slopeDownAngle + 180);
+                    } else if (isBindingPressed(Binding.LEFT)) {
+                        setMotion(playerMaxWalkSpeed, slopeDownAngle);
+                    } else {
+                        setSpeed(0);
+                    }
                 } else {
-                    deltaX = Utils.approach(deltaX, 0, playerWalkDeceleration * delta);
+                    if (isBindingPressed(Binding.RIGHT)) {
+                        setMotion(playerMaxWalkSpeed, 0);
+                    } else if (isBindingPressed(Binding.LEFT)) {
+                        setMotion(playerMaxWalkSpeed, 180);
+                    } else {
+                        setSpeed(0);
+                    }
                 }
     
-                if (footContactBlocks.size == 0 && footSensorBlocks.size > 0) {
-                    gravityY = -playerGravity;
-                } else if (footContactBlocks.size > 0) {
+                if (footContactBlocks.size > 0) {
                     deltaY = 0;
-                    gravityY = 0;
-                } else if (footSensorBlocks.size == 0) {
-                    gravityY = -playerGravity;
+                } else if (footContactBlocks.size == 0) {
                     mode = FALLING;
                 }
                 break;
@@ -120,7 +150,18 @@ public class Player extends Entity {
     
     @Override
     public void draw(float delta) {
-    
+        shapeDrawer.setColor(Color.GREEN);
+        shapeDrawer.setDefaultLineWidth(10f);
+        shapeDrawer.line(x - CHECK_DISTANCE, y, x + CHECK_DISTANCE, y);
+        shapeDrawer.line(x, y, x, y - CHECK_DISTANCE);
+        
+        shapeDrawer.setColor(Color.RED);
+        shapeDrawer.setDefaultLineWidth(10f);
+        temp.set(20, 0);
+        temp.rotateDeg(slopeDownAngle);
+        shapeDrawer.line(x, y, x + temp.x, y + temp.y);
+        
+        
     }
     
     @Override
@@ -129,7 +170,7 @@ public class Player extends Entity {
     }
     
     @Override
-    public void beginContact(Entity other, Fixture fixture, Contact contact) {
+    public void beginContact(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (other instanceof Bounds) {
             if (fixture == footSensor) {
                 footSensorBlocks.add(other);
@@ -146,12 +187,12 @@ public class Player extends Entity {
     }
     
     @Override
-    public void preSolve(Entity other, Fixture fixture, Contact contact) {
+    public void preSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
 
     }
     
     @Override
-    public void endContact(Entity other, Fixture fixture, Contact contact) {
+    public void endContact(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (other instanceof Bounds) {
             if (fixture == footSensor) {
                 footSensorBlocks.removeValue(other, true);
@@ -168,7 +209,7 @@ public class Player extends Entity {
     }
     
     @Override
-    public void postSolve(Entity other, Fixture fixture, Contact contact) {
+    public void postSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
     
     }
 }

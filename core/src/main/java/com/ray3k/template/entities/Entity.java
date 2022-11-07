@@ -34,7 +34,6 @@ public abstract class Entity {
     public float gravityY;
     public boolean visible = true;
     public float depth;
-    public Color collisionBoxDebugColor;
     public boolean sleepable = true;
     public boolean sleeping;
     
@@ -43,10 +42,10 @@ public abstract class Entity {
     public abstract void act(float delta);
     public abstract void draw(float delta);
     public abstract void destroy();
-    public abstract void beginContact(Entity other, Fixture fixture, Contact contact);
-    public abstract void endContact(Entity other, Fixture fixture, Contact contact);
-    public abstract void preSolve(Entity other, Fixture fixture, Contact contact);
-    public abstract void postSolve(Entity other, Fixture fixture, Contact contact);
+    public abstract void beginContact(Entity other, Fixture fixture, Fixture otherFixture, Contact contact);
+    public abstract void endContact(Entity other, Fixture fixture, Fixture otherFixture, Contact contact);
+    public abstract void preSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact);
+    public abstract void postSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact);
     
     public void setMotion(float speed, float direction) {
         temp1.set(speed, 0);
@@ -203,13 +202,20 @@ public abstract class Entity {
             body.setUserData(this);
         }
     
+        temp1.set(0,.25f);
+        CircleShape circleShape = new CircleShape();
+        circleShape.setRadius(.25f);
+        circleShape.setPosition(temp1);
+        
         PolygonShape box = new PolygonShape();
         temp1.set(p2m(offsetX + width / 2), p2m(offsetY + height / 2));
         box.setAsBox(p2m(width / 2), p2m(height / 2), temp1, 0);
     
-        var fixture = body.createFixture(box, .5f);
-        fixture.setFriction(0);
-        box.dispose();
+        var fixture = body.createFixture(circleShape, .5f);
+        circleShape.dispose();
+//        var fixture = body.createFixture(box, .5f);
+//        fixture.setFriction(0);
+//        box.dispose();
         
         return fixture;
     }

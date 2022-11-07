@@ -33,22 +33,22 @@ public class Block extends Entity {
     }
     
     @Override
-    public void beginContact(Entity other, Fixture fixture, Contact contact) {
+    public void beginContact(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
     
     }
     
     @Override
-    public void preSolve(Entity other, Fixture fixture, Contact contact) {
+    public void preSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
     
     }
     
     @Override
-    public void endContact(Entity other, Fixture fixture, Contact contact) {
+    public void endContact(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
     
     }
     
     @Override
-    public void postSolve(Entity other, Fixture fixture, Contact contact) {
+    public void postSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
     
     }
 }

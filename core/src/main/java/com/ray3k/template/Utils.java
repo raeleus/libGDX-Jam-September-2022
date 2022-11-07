@@ -417,4 +417,13 @@ public class Utils {
     public static String intToTwoDigit(int value) {
         return (value < 10 ? "0" : "") + value;
     }
+    
+    public static boolean isClockwise(float[] points) {
+        var sum = 0;
+        for (int i = 0; i + 3 < points.length; i += 2) {
+            sum += (points[i + 2] - points[i]) * (points[i + 3] - points[i + 1]);
+        }
+        sum += (points[0] - points[points.length - 2]) * (points[1] - points[points.length - 1]);
+        return sum < 0;
+    }
 }
