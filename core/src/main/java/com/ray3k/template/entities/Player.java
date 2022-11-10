@@ -1,7 +1,6 @@
 package com.ray3k.template.entities;
 
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
 import com.badlogic.gdx.physics.box2d.Contact;
@@ -13,7 +12,6 @@ import com.ray3k.template.*;
 import static com.ray3k.template.Core.*;
 import static com.ray3k.template.Resources.SpineZebra.*;
 import static com.ray3k.template.Resources.Values.*;
-import static com.ray3k.template.entities.Player.Mode.*;
 
 /**
  * track 0 blink
@@ -25,10 +23,6 @@ import static com.ray3k.template.entities.Player.Mode.*;
  * track 6 no baby
  */
 public class Player extends Entity {
-    enum Mode {
-        STANDING, WALKING, RUNNING, SKIDDING, JUMPING, DOUBLE_JUMPING, FALLING, SHOOTING
-    }
-    private Mode mode;
     private Fixture footSensor;
     private Fixture headSensor;
     private Fixture leftSensor;
@@ -74,7 +68,6 @@ public class Player extends Entity {
         animationState.setAnimation(0, animationBlink, true);
         animationState.setAnimation(1, animationTail, true);
         animationState.setAnimation(2, animationJumpFall, true);
-        mode = FALLING;
         
         gravityY = -playerGravity;
     }
@@ -100,33 +93,26 @@ public class Player extends Entity {
             if (headSensorBlocks.contains(entity, true)) headContactBlocks.add(entity);
         }
         
-        checkGround();
         slopeCheck();
         applyMovement();
     }
     
-    private void checkGround() {
+    private void slopeCheck() {
+        //check ground
         var newGrounded = footContactBlocks.size > 0;
         isGrounded = newGrounded;
-    }
-    
-    private void slopeCheck() {
-        slopeCheckHorizontal();
-        slopeCheckVertical();
-    }
-    
-    private void slopeCheckHorizontal() {
-        isOnSlope = false;
         
+        isOnSlope = false;
+        //horizontal check
         world.rayCast((fixture, point, normal, fraction) -> {
             if (fixture.getBody().getUserData() instanceof Bounds) {
                 isOnSlope = true;
                 slopeSideAngle = normal.angleDeg();
                 return 1;
             } else return -1;
-            
-        }, p2m(x), p2m(y), p2m(x + slopeCheckDistance), p2m(y));
         
+        }, p2m(x), p2m(y), p2m(x + slopeCheckDistance), p2m(y));
+    
         if (!isOnSlope) world.rayCast((fixture, point, normal, fraction) -> {
             if (fixture.getBody().getUserData() instanceof Bounds) {
                 isOnSlope = true;
@@ -134,23 +120,22 @@ public class Player extends Entity {
                 return 1;
             } else return -1;
         }, p2m(x), p2m(y), p2m(x - slopeCheckDistance), p2m(y));
-    }
-    
-    private void slopeCheckVertical() {
+        
+        //vertical check
         world.rayCast((fixture, point, normal, fraction) -> {
+            isGrounded = true;
             slopeDownAngle = normal.angleDeg();
             slopeNormalPerp = normal.rotate90(1).angleDeg();
-            
+        
             if (slopeDownAngle != lastSlopeAngle) {
                 isOnSlope = true;
-                isGrounded = true;
             }
-            
+        
             lastSlopeAngle = slopeDownAngle;
-            
+        
             return 1;
         }, p2m(x), p2m(y), p2m(x), p2m(y - slopeCheckDistance));
-        
+    
         if ((Utils.isEqual360(slopeDownAngle, 90, maxSlopeAngle) || Utils.isEqual360(slopeDownAngle, 270, maxSlopeAngle))
                 && (Utils.isEqual360(slopeSideAngle, 90, maxSlopeAngle) || Utils.isEqual360(slopeSideAngle, 270, maxSlopeAngle))) {
             canWalkOnSlope = true;
@@ -161,18 +146,18 @@ public class Player extends Entity {
     
     private void applyMovement() {
         if (isGrounded && !isOnSlope) {
-            System.out.println("normal");
+//            System.out.println("normal");
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
                 setMotion(playerMaxWalkSpeed, isBindingPressed(Binding.RIGHT) ? 0 : 180);
             } else setSpeed(0);
         } else if (isGrounded && isOnSlope && canWalkOnSlope) {
-            System.out.println("slope " + slopeNormalPerp);
+//            System.out.println("slope " + slopeNormalPerp);
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
                 setMotion(playerMaxWalkSpeed,
                         isBindingPressed(Binding.RIGHT) ? slopeNormalPerp + 180 : slopeNormalPerp);
             } else setSpeed(0);
         } else {
-            System.out.println("air");
+//            System.out.println("air");
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
                 deltaX = isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : - playerMaxWalkSpeed;
             }
