@@ -6,30 +6,18 @@ import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
 import com.badlogic.gdx.physics.box2d.Contact;
 import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.utils.Array;
-import com.esotericsoftware.spine.Bone;
 import com.ray3k.template.*;
 
 import static com.ray3k.template.Core.*;
 import static com.ray3k.template.Resources.SpineZebra.*;
 import static com.ray3k.template.Resources.Values.*;
 
-/**
- * track 0 blink
- * track 1 tail
- * track 2 animations
- * track 3 lick
- * track 4 lick blocked
- * track 5 hurt
- * track 6 no baby
- */
 public class Player extends Entity {
     private Fixture footSensor;
     private Fixture headSensor;
     private Fixture leftSensor;
     private Fixture rightSensor;
     private Fixture collisionBox;
-    private Bone smokeTarget;
-    private Bone fartTarget;
     private Array<Entity> footSensorBlocks = new Array<>();
     private Array<Entity> rightSensorBlocks = new Array<>();
     private Array<Entity> leftSensorBlocks = new Array<>();
@@ -51,6 +39,7 @@ public class Player extends Entity {
     private boolean canWalkOnSlope;
     private boolean canJump;
     private boolean isJumping;
+    private boolean touchedTheGround;
     
     @Override
     public void create() {
@@ -62,9 +51,6 @@ public class Player extends Entity {
         headSensor = setSensorBox(slotHeadSensor, BodyType.DynamicBody);
         leftSensor = setSensorBox(slotLeftSensor, BodyType.DynamicBody);
         rightSensor = setSensorBox(slotRightSensor, BodyType.DynamicBody);
-    
-        smokeTarget = findBone(boneSmokeTarget);
-        fartTarget = findBone(boneFartTarget);
         
         animationState.setAnimation(0, animationBlink, true);
         animationState.setAnimation(1, animationTail, true);
@@ -100,11 +86,10 @@ public class Player extends Entity {
     
     private void slopeCheck() {
         //check ground
-        var newGrounded = footContactBlocks.size > 0;
-        isGrounded = newGrounded;
+        if (!touchedTheGround) touchedTheGround = footContactBlocks.size > 0;
+        isGrounded = footContactBlocks.size > 0;
         if (isJumping && isGrounded && deltaY <= 0) {
             isJumping = false;
-            System.out.println("land");
         }
         
         isOnSlope = false;
@@ -128,7 +113,7 @@ public class Player extends Entity {
         
         //vertical check
         world.rayCast((fixture, point, normal, fraction) -> {
-            isGrounded = true;
+            if (touchedTheGround) isGrounded = true;
             slopeDownAngle = normal.angleDeg();
             slopeNormalPerp = normal.rotate90(1).angleDeg();
         
@@ -148,30 +133,28 @@ public class Player extends Entity {
             canWalkOnSlope = false;
         }
         
+        if (!isGrounded) touchedTheGround = false;
         canJump = isGrounded && !isJumping && (!isOnSlope || canWalkOnSlope);
     }
     
     private void applyMovement() {
-        if (!isJumping) {
-            if (isGrounded && !isOnSlope) {
-                if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
-                    setMotion(playerMaxWalkSpeed, isBindingPressed(Binding.RIGHT) ? 0 : 180);
-                } else setSpeed(0);
-            } else if (isGrounded && isOnSlope && canWalkOnSlope) {
-                if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
-                    setMotion(playerMaxWalkSpeed,
-                            isBindingPressed(Binding.RIGHT) ? slopeNormalPerp + 180 : slopeNormalPerp);
-                } else setSpeed(0);
-            } else {
-                if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
-                    deltaX = isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed;
-                }
+        if (isGrounded && !isOnSlope && !isJumping) {
+            if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
+                setMotion(playerMaxWalkSpeed, isBindingPressed(Binding.RIGHT) ? 0 : 180);
+            } else setSpeed(0);
+        } else if (isGrounded && isOnSlope && canWalkOnSlope && !isJumping) {
+            if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
+                setMotion(playerMaxWalkSpeed,
+                        isBindingPressed(Binding.RIGHT) ? slopeNormalPerp + 180 : slopeNormalPerp);
+            } else setSpeed(0);
+        } else {
+            if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
+                deltaX = isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed;
             }
         }
         
         if (canJump) {
             if (isBindingPressed(Binding.JUMP)) {
-                System.out.println("jump");
                 isJumping = true;
                 canJump = false;
                 deltaY = playerJumpSpeed;
