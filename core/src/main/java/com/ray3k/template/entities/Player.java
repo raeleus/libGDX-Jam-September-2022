@@ -28,8 +28,8 @@ public class Player extends Entity {
     private Array<Entity> headContactBlocks = new Array<>();
     private Array<Entity> collisionBoxContactBlocks = new Array<>();
     private static Vector2 temp = new Vector2();
-    private boolean isOnSlope;
-    private boolean isGrounded;
+    private boolean onSlope;
+    private boolean grounded;
     private float slopeDownAngle;
     private final float maxSlopeAngle = 50;
     private final float slopeCheckDistance = 30;
@@ -38,7 +38,7 @@ public class Player extends Entity {
     private float lastSlopeAngle;
     private boolean canWalkOnSlope;
     private boolean canJump;
-    private boolean isJumping;
+    private boolean jumping;
     private boolean touchedTheGround;
     
     @Override
@@ -87,25 +87,25 @@ public class Player extends Entity {
     private void slopeCheck() {
         //check ground
         if (!touchedTheGround) touchedTheGround = footContactBlocks.size > 0;
-        isGrounded = footContactBlocks.size > 0;
-        if (isJumping && isGrounded && deltaY <= 0) {
-            isJumping = false;
+        grounded = footContactBlocks.size > 0;
+        if (jumping && grounded && deltaY <= 0) {
+            jumping = false;
         }
         
-        isOnSlope = false;
+        onSlope = false;
         //horizontal check
         world.rayCast((fixture, point, normal, fraction) -> {
             if (fixture.getBody().getUserData() instanceof Bounds) {
-                isOnSlope = true;
+                onSlope = true;
                 slopeSideAngle = normal.angleDeg();
                 return 1;
             } else return -1;
         
         }, p2m(x), p2m(y), p2m(x + slopeCheckDistance), p2m(y));
     
-        if (!isOnSlope) world.rayCast((fixture, point, normal, fraction) -> {
+        if (!onSlope) world.rayCast((fixture, point, normal, fraction) -> {
             if (fixture.getBody().getUserData() instanceof Bounds) {
-                isOnSlope = true;
+                onSlope = true;
                 slopeSideAngle = normal.angleDeg();
                 return 1;
             } else return -1;
@@ -113,12 +113,12 @@ public class Player extends Entity {
         
         //vertical check
         world.rayCast((fixture, point, normal, fraction) -> {
-            if (touchedTheGround) isGrounded = true;
+            if (touchedTheGround) grounded = true;
             slopeDownAngle = normal.angleDeg();
             slopeNormalPerp = normal.rotate90(1).angleDeg();
         
             if (slopeDownAngle != lastSlopeAngle) {
-                isOnSlope = true;
+                onSlope = true;
             }
         
             lastSlopeAngle = slopeDownAngle;
@@ -133,16 +133,16 @@ public class Player extends Entity {
             canWalkOnSlope = false;
         }
         
-        if (!isGrounded) touchedTheGround = false;
-        canJump = isGrounded && !isJumping && (!isOnSlope || canWalkOnSlope);
+        if (!grounded) touchedTheGround = false;
+        canJump = grounded && !jumping && (!onSlope || canWalkOnSlope);
     }
     
     private void applyMovement() {
-        if (isGrounded && !isOnSlope && !isJumping) {
+        if (grounded && !onSlope && !jumping) {
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
                 setMotion(playerMaxWalkSpeed, isBindingPressed(Binding.RIGHT) ? 0 : 180);
             } else setSpeed(0);
-        } else if (isGrounded && isOnSlope && canWalkOnSlope && !isJumping) {
+        } else if (grounded && onSlope && canWalkOnSlope && !jumping) {
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
                 setMotion(playerMaxWalkSpeed,
                         isBindingPressed(Binding.RIGHT) ? slopeNormalPerp + 180 : slopeNormalPerp);
@@ -155,7 +155,7 @@ public class Player extends Entity {
         
         if (canJump) {
             if (isBindingPressed(Binding.JUMP)) {
-                isJumping = true;
+                jumping = true;
                 canJump = false;
                 deltaY = playerJumpSpeed;
             }
@@ -174,8 +174,6 @@ public class Player extends Entity {
         temp.set(20, 0);
         temp.rotateDeg(slopeDownAngle);
         shapeDrawer.line(x, y, x + temp.x, y + temp.y);
-        
-        
     }
     
     @Override
