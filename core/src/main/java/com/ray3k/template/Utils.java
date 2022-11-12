@@ -418,6 +418,11 @@ public class Utils {
         return (value < 10 ? "0" : "") + value;
     }
     
+    /**
+     * not sure this works...
+     * @param points
+     * @return
+     */
     public static boolean isClockwise(float[] points) {
         var sum = 0;
         for (int i = 0; i + 3 < points.length; i += 2) {
@@ -425,5 +430,30 @@ public class Utils {
         }
         sum += (points[0] - points[points.length - 2]) * (points[1] - points[points.length - 1]);
         return sum < 0;
+    }
+    
+    private static final Vector2 closest=new Vector2();
+    private static final Vector2 bVec1=new Vector2();
+    private static final Vector2 bVec2=new Vector2();
+    public static Vector2 closestPointInLine(Vector2 point,Vector2 linePoint1,Vector2 linePoint2){
+        bVec1.set(linePoint2).sub(linePoint1);
+        bVec2.set(point).sub(linePoint1);
+        float av=bVec1.x*bVec1.x+bVec1.y*bVec1.y;
+        float bv=bVec2.x*bVec1.x+bVec2.y*bVec1.y;
+        float t=bv/av;
+        if(t<0) t=0;
+        if(t>1) t=1f;
+        closest.set(linePoint1).add(bVec1.x*t,bVec1.y*t);
+        return closest;
+    }
+    
+    private static final Vector2 point = new Vector2();
+    private static final Vector2 linePoint1 = new Vector2();
+    private static final Vector2 linePoint2 = new Vector2();
+    public static Vector2 closestPointInLine(float pointX, float pointY, float x1, float y1, float x2, float y2) {
+        point.set(pointX, pointY);
+        linePoint1.set(x1, y1);
+        linePoint2.set(x2, y2);
+        return closestPointInLine(point, linePoint1, linePoint2);
     }
 }

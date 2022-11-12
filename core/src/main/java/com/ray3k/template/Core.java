@@ -62,7 +62,7 @@ public class Core extends JamGame {
     public final static ControllerValue ANY_CONTROLLER_BUTTON = new ControllerValue(null, -1, 0);
     public final static ControllerValue ANY_CONTROLLER_AXIS = new ControllerValue(null, -1, 0);
     public final static ObjectMap<Controller, ControllerHandler> controllerMap = new ObjectMap<>();
-    final static long MS_PER_UPDATE = 10;
+    public final static long MS_PER_UPDATE = 10;
     static final int MAX_VERTEX_SIZE = 32767;
     public static Core core;
     public static Skin skin;

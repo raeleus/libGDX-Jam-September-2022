@@ -42,6 +42,12 @@ public class Bounds extends Entity {
             }
             edgeShape.set(points[i], points[i + 1], nextX, nextY);
     
+            if (i - 2 >= 0) {
+                edgeShape.setVertex0(points[i - 2], points[i - 1]);
+            } else {
+                edgeShape.setVertex0(points[points.length - 2], points[points.length - 1]);
+            }
+            
             if (i + 5 < points.length)
                 edgeShape.setVertex3(points[i + 4], points[i + 5]);
             else

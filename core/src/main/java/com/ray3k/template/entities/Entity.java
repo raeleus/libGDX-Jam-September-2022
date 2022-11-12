@@ -201,21 +201,41 @@ public abstract class Entity {
             body = world.createBody(bodyDef);
             body.setUserData(this);
         }
-    
-        temp1.set(0,.25f);
-        CircleShape circleShape = new CircleShape();
-        circleShape.setRadius(.25f);
-        circleShape.setPosition(temp1);
         
         PolygonShape box = new PolygonShape();
         temp1.set(p2m(offsetX + width / 2), p2m(offsetY + height / 2));
         box.setAsBox(p2m(width / 2), p2m(height / 2), temp1, 0);
+        
+        var fixture = body.createFixture(box, .5f);
+        fixture.setFriction(0);
+        box.dispose();
+        
+        return fixture;
+    }
     
+    public Fixture setCollisionCircle(float centerX, float centerY, float radius, BodyType bodyType) {
+        bboxOriginX = centerX - radius;
+        bboxOriginY = centerY - radius;
+        bboxWidth = radius * 2;
+        bboxHeight = radius * 2;
+        
+        if (body == null) {
+            BodyDef bodyDef = new BodyDef();
+            bodyDef.type = bodyType;
+            bodyDef.position.set(x, y);
+            bodyDef.fixedRotation = true;
+            
+            body = world.createBody(bodyDef);
+            body.setUserData(this);
+        }
+        
+        CircleShape circleShape = new CircleShape();
+        circleShape.setRadius(p2m(radius));
+        temp1.set(p2m(centerX), p2m(centerY));
+        circleShape.setPosition(temp1);
+        
         var fixture = body.createFixture(circleShape, .5f);
         circleShape.dispose();
-//        var fixture = body.createFixture(box, .5f);
-//        fixture.setFriction(0);
-//        box.dispose();
         
         return fixture;
     }

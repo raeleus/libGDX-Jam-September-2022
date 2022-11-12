@@ -1,9 +1,11 @@
 package com.ray3k.template.entities;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.math.Vector;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
 import com.badlogic.gdx.physics.box2d.Contact;
+import com.badlogic.gdx.physics.box2d.EdgeShape;
 import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.utils.Array;
 import com.ray3k.template.*;
@@ -18,16 +20,16 @@ public class Player extends Entity {
     private Fixture leftSensor;
     private Fixture rightSensor;
     private Fixture collisionBox;
-    private Array<Entity> footSensorBlocks = new Array<>();
-    private Array<Entity> rightSensorBlocks = new Array<>();
-    private Array<Entity> leftSensorBlocks = new Array<>();
-    private Array<Entity> headSensorBlocks = new Array<>();
-    private Array<Entity> footContactBlocks = new Array<>();
-    private Array<Entity> rightContactBlocks = new Array<>();
-    private Array<Entity> leftContactBlocks = new Array<>();
-    private Array<Entity> headContactBlocks = new Array<>();
-    private Array<Entity> collisionBoxContactBlocks = new Array<>();
-    private static Vector2 temp = new Vector2();
+    private final Array<Entity> footSensorBlocks = new Array<>();
+    private final Array<Entity> rightSensorBlocks = new Array<>();
+    private final Array<Entity> leftSensorBlocks = new Array<>();
+    private final Array<Entity> headSensorBlocks = new Array<>();
+    private final Array<Entity> footContactBlocks = new Array<>();
+    private final Array<Entity> rightContactBlocks = new Array<>();
+    private final Array<Entity> leftContactBlocks = new Array<>();
+    private final Array<Entity> headContactBlocks = new Array<>();
+    private final Array<Entity> collisionBoxContactBlocks = new Array<>();
+    private final static Vector2 temp = new Vector2();
     private boolean onSlope;
     private boolean grounded;
     private float slopeDownAngle;
@@ -40,13 +42,14 @@ public class Player extends Entity {
     private boolean jumping;
     private boolean touchedTheGround;
     private boolean hitVerticalRayCast;
+    private EdgeShape slopeEdgeShape;
     
     @Override
     public void create() {
         depth = DEPTH_PLAYER;
         animationData.setDefaultMix(.25f);
         setSkeletonData(skeletonData, animationData);
-        collisionBox = setCollisionBox(slotBbox, BodyType.DynamicBody);
+        collisionBox = setCollisionCircle(0, 25, 25, BodyType.DynamicBody);
         footSensor = setSensorBox(slotFootSensor, BodyType.DynamicBody);
         headSensor = setSensorBox(slotHeadSensor, BodyType.DynamicBody);
         leftSensor = setSensorBox(slotLeftSensor, BodyType.DynamicBody);
@@ -117,6 +120,7 @@ public class Player extends Entity {
             hitVerticalRayCast = true;
             if (touchedTheGround) grounded = true;
             slopeDownAngle = normal.angleDeg();
+            slopeEdgeShape = (EdgeShape) fixture.getShape();
         
             if (slopeDownAngle != lastSlopeAngle) {
                 onSlope = true;
@@ -139,6 +143,10 @@ public class Player extends Entity {
         canJump = grounded && !jumping && (!onSlope || canWalkOnSlope);
     }
     
+    private static final Vector2 temp1 = new Vector2();
+    private static final Vector2 temp2 = new Vector2();
+    private static final Vector2 temp3 = new Vector2();
+    
     private void applyMovement() {
         if (grounded && !onSlope && !jumping) {
             System.out.println("grounded");
@@ -152,7 +160,14 @@ public class Player extends Entity {
             System.out.println("slope " + slopeDownAngle);
             gravityY = 0;
             
-            if (footContactBlocks.size == 0) setMotion(2000, slopeDownAngle + 180);
+            temp1.set(x, y);
+            slopeEdgeShape.getVertex1(temp2);
+            temp2.set(m2p(temp2.x), m2p(temp2.y));
+            slopeEdgeShape.getVertex2(temp3);
+            temp3.set(m2p(temp3.x), m2p(temp3.y));
+            var closest = Utils.closestPointInLine(temp1, temp2, temp3);
+            
+            if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 1000 / MS_PER_UPDATE, slopeDownAngle + 180);
             else setSpeed(0);
             
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
