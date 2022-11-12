@@ -161,7 +161,7 @@ public class Player extends Entity {
             } else lateralSpeed = Utils.approach(lateralSpeed, 0, playerWalkDeceleration * delta);
             deltaX = lateralSpeed;
         } else if (grounded && onSlope && canWalkOnSlope && !jumping) {
-            System.out.println("slope " + slopeDownAngle);
+            System.out.println("slope");
             gravityY = 0;
             
             temp1.set(x, y);
@@ -193,9 +193,10 @@ public class Player extends Entity {
     
             if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 1000 / MS_PER_UPDATE, slopeDownAngle + 180);
             else setSpeed(0);
-            
-            lateralSpeed = Utils.approach(lateralSpeed, Utils.isEqual360(slopeDownAngle, 0, 90) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
-            addMotion(lateralSpeed, slopeDownAngle - 90f);
+    
+            float angle = hitVerticalRayCast ? slopeDownAngle : slopeSideAngle;
+            lateralSpeed = Utils.approach(lateralSpeed, Utils.isEqual360(angle, 0, 90) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
+            addMotion(lateralSpeed, angle - 90f);
         } else {
             System.out.println("air");
             gravityY = -playerGravity;
@@ -204,7 +205,6 @@ public class Player extends Entity {
             } else lateralSpeed = Utils.approach(lateralSpeed, 0, playerWalkDeceleration * delta);
             deltaX = lateralSpeed;
         }
-        System.out.println("lateralSpeed = " + lateralSpeed);
         
         if (canJump) {
             if (isBindingPressed(Binding.JUMP)) {
