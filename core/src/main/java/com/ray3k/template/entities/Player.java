@@ -1,7 +1,7 @@
 package com.ray3k.template.entities;
 
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.math.Vector;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
 import com.badlogic.gdx.physics.box2d.Contact;
@@ -43,6 +43,7 @@ public class Player extends Entity {
     private boolean touchedTheGround;
     private boolean hitVerticalRayCast;
     private EdgeShape slopeEdgeShape;
+    private float lateralSpeed;
     
     @Override
     public void create() {
@@ -84,7 +85,7 @@ public class Player extends Entity {
         }
         
         slopeCheck();
-        applyMovement();
+        applyMovement(delta);
     }
     
     private void slopeCheck() {
@@ -149,17 +150,18 @@ public class Player extends Entity {
     private static final Vector2 temp2 = new Vector2();
     private static final Vector2 temp3 = new Vector2();
     
-    private void applyMovement() {
+    private void applyMovement(float delta) {
         if (grounded && !onSlope && !jumping) {
-//            System.out.println("grounded");
+            System.out.println("grounded");
             gravityY = 0;
             if (footContactBlocks.size > 0) deltaY = 0;
             
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
-                deltaX = isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed;
-            } else deltaX = 0;
+                lateralSpeed = Utils.approach(lateralSpeed, isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
+            } else lateralSpeed = Utils.approach(lateralSpeed, 0, playerWalkDeceleration * delta);
+            deltaX = lateralSpeed;
         } else if (grounded && onSlope && canWalkOnSlope && !jumping) {
-//            System.out.println("slope " + slopeDownAngle);
+            System.out.println("slope " + slopeDownAngle);
             gravityY = 0;
             
             temp1.set(x, y);
@@ -173,11 +175,13 @@ public class Player extends Entity {
             else setSpeed(0);
             
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
-                addMotion(playerMaxWalkSpeed,
-                        isBindingPressed(Binding.RIGHT) ? slopeDownAngle - 90f : slopeDownAngle + 90f);
+                lateralSpeed = Utils.approach(lateralSpeed, isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
+            } else {
+                lateralSpeed = Utils.approach(lateralSpeed, 0, playerWalkDeceleration * delta);
             }
+            addMotion(lateralSpeed, slopeDownAngle - 90f);
         } else if (grounded && onSlope && !canWalkOnSlope && !jumping) {
-//            System.out.println("sliding");
+            System.out.println("sliding");
             gravityY = 0;
     
             temp1.set(x, y);
@@ -190,17 +194,17 @@ public class Player extends Entity {
             if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 1000 / MS_PER_UPDATE, slopeDownAngle + 180);
             else setSpeed(0);
             
-            var angle = hitVerticalRayCast ? slopeDownAngle + 90 : slopeSideAngle + 90;
-            System.out.println("angle = " + angle);
-            if (Utils.isEqual360(angle, 90, 90)) angle += 180;
-            addMotion(playerMaxWalkSpeed, angle);
+            lateralSpeed = Utils.approach(lateralSpeed, Utils.isEqual360(slopeDownAngle, 0, 90) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
+            addMotion(lateralSpeed, slopeDownAngle - 90f);
         } else {
-//            System.out.println("air");
+            System.out.println("air");
             gravityY = -playerGravity;
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
-                deltaX = isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed;
-            }
+                lateralSpeed = Utils.approach(lateralSpeed, isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
+            } else lateralSpeed = Utils.approach(lateralSpeed, 0, playerWalkDeceleration * delta);
+            deltaX = lateralSpeed;
         }
+        System.out.println("lateralSpeed = " + lateralSpeed);
         
         if (canJump) {
             if (isBindingPressed(Binding.JUMP)) {
