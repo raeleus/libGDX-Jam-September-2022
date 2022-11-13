@@ -55,6 +55,7 @@ public class Bounds extends Entity {
     
             var fixture = body.createFixture(edgeShape, .5f);
             fixture.setFriction(0);
+            fixture.getFilterData().categoryBits = CATEGORY_BOUNDS;
     
             var data = new BoundsData();
             temp1.set(nextX, nextY);

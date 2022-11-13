@@ -1,7 +1,6 @@
 package com.ray3k.template.entities;
 
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
 import com.badlogic.gdx.physics.box2d.Contact;
@@ -34,7 +33,8 @@ public class Player extends Entity {
     private boolean grounded;
     private float slopeDownAngle;
     private final float maxSlopeAngle = 50;
-    private final float slopeCheckDistance = 30;
+    private final float slopeCheckDistanceH = 30;
+    private final float slopeCheckDistanceV = 30;
     private float slopeSideAngle;
     private float lastSlopeAngle;
     private boolean canWalkOnSlope;
@@ -42,7 +42,10 @@ public class Player extends Entity {
     private boolean jumping;
     private boolean touchedTheGround;
     private boolean hitVerticalRayCast;
+    private boolean hitHorizontalRayCast;
     private EdgeShape slopeEdgeShape;
+    private EdgeShape contactEdgeShape;
+    private float contactAngle;
     private float lateralSpeed;
     
     @Override
@@ -51,6 +54,8 @@ public class Player extends Entity {
         animationData.setDefaultMix(.25f);
         setSkeletonData(skeletonData, animationData);
         collisionBox = setCollisionCircle(0, 25, 25, BodyType.DynamicBody);
+        collisionBox.getFilterData().categoryBits = CATEGORY_ENTITY;
+        collisionBox.getFilterData().maskBits = CATEGORY_BOUNDS;
         footSensor = setSensorBox(slotFootSensor, BodyType.DynamicBody);
         headSensor = setSensorBox(slotHeadSensor, BodyType.DynamicBody);
         leftSensor = setSensorBox(slotLeftSensor, BodyType.DynamicBody);
@@ -96,26 +101,30 @@ public class Player extends Entity {
             jumping = false;
         }
         
+        slopeEdgeShape = null;
         onSlope = false;
+        hitHorizontalRayCast = false;
         //horizontal check
         world.rayCast((fixture, point, normal, fraction) -> {
             if (fixture.getBody().getUserData() instanceof Bounds) {
+                hitHorizontalRayCast = true;
                 onSlope = true;
                 slopeSideAngle = normal.angleDeg();
                 slopeEdgeShape = (EdgeShape) fixture.getShape();
                 return 1;
             } else return -1;
         
-        }, p2m(x), p2m(y), p2m(x + slopeCheckDistance), p2m(y));
+        }, p2m(x), p2m(y), p2m(x + slopeCheckDistanceH), p2m(y));
     
         if (!onSlope) world.rayCast((fixture, point, normal, fraction) -> {
             if (fixture.getBody().getUserData() instanceof Bounds) {
+                hitHorizontalRayCast = true;
                 onSlope = true;
                 slopeSideAngle = normal.angleDeg();
                 slopeEdgeShape = (EdgeShape) fixture.getShape();
                 return 1;
             } else return -1;
-        }, p2m(x), p2m(y), p2m(x - slopeCheckDistance), p2m(y));
+        }, p2m(x), p2m(y), p2m(x - slopeCheckDistanceH), p2m(y));
         
         hitVerticalRayCast = false;
         //vertical check
@@ -132,7 +141,7 @@ public class Player extends Entity {
             lastSlopeAngle = slopeDownAngle;
         
             return 1;
-        }, p2m(x), p2m(y), p2m(x), p2m(y - slopeCheckDistance));
+        }, p2m(x), p2m(y), p2m(x), p2m(y - slopeCheckDistanceV));
     
         if (hitVerticalRayCast && (Utils.isEqual360(slopeDownAngle, 90, maxSlopeAngle) || Utils.isEqual360(slopeDownAngle, 270, maxSlopeAngle))) {
             canWalkOnSlope = true;
@@ -152,7 +161,7 @@ public class Player extends Entity {
     
     private void applyMovement(float delta) {
         if (grounded && !onSlope && !jumping) {
-            System.out.println("grounded");
+//            System.out.println("grounded");
             gravityY = 0;
             if (footContactBlocks.size > 0) deltaY = 0;
             
@@ -161,7 +170,7 @@ public class Player extends Entity {
             } else lateralSpeed = Utils.approach(lateralSpeed, 0, playerWalkDeceleration * delta);
             deltaX = lateralSpeed;
         } else if (grounded && onSlope && canWalkOnSlope && !jumping) {
-            System.out.println("slope");
+//            System.out.println("slope");
             gravityY = 0;
             
             temp1.set(x, y);
@@ -173,15 +182,17 @@ public class Player extends Entity {
             
             if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 1000 / MS_PER_UPDATE, slopeDownAngle + 180);
             else setSpeed(0);
-            
+//            setSpeed(0);
+    
+            float angle = hitVerticalRayCast ? slopeDownAngle : hitHorizontalRayCast ? slopeSideAngle : 90;
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
                 lateralSpeed = Utils.approach(lateralSpeed, isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
             } else {
                 lateralSpeed = Utils.approach(lateralSpeed, 0, playerWalkDeceleration * delta);
             }
-            addMotion(lateralSpeed, slopeDownAngle - 90f);
+            addMotion(lateralSpeed, angle - 90f);
         } else if (grounded && onSlope && !canWalkOnSlope && !jumping) {
-            System.out.println("sliding");
+//            System.out.println("sliding");
             gravityY = 0;
     
             temp1.set(x, y);
@@ -193,12 +204,13 @@ public class Player extends Entity {
     
             if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 1000 / MS_PER_UPDATE, slopeDownAngle + 180);
             else setSpeed(0);
+//            setSpeed(0);
     
-            float angle = hitVerticalRayCast ? slopeDownAngle : slopeSideAngle;
+            float angle = hitVerticalRayCast ? slopeDownAngle : hitHorizontalRayCast ? slopeSideAngle : 90;
             lateralSpeed = Utils.approach(lateralSpeed, Utils.isEqual360(angle, 0, 90) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
             addMotion(lateralSpeed, angle - 90f);
         } else {
-            System.out.println("air");
+//            System.out.println("air");
             gravityY = -playerGravity;
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
                 lateralSpeed = Utils.approach(lateralSpeed, isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
@@ -219,8 +231,8 @@ public class Player extends Entity {
     public void draw(float delta) {
         shapeDrawer.setColor(Color.GREEN);
         shapeDrawer.setDefaultLineWidth(5f);
-        shapeDrawer.line(x - slopeCheckDistance, y, x + slopeCheckDistance, y);
-        shapeDrawer.line(x, y, x, y - slopeCheckDistance);
+        shapeDrawer.line(x - slopeCheckDistanceH, y, x + slopeCheckDistanceH, y);
+        shapeDrawer.line(x, y, x, y - slopeCheckDistanceV);
         
         shapeDrawer.setColor(Color.RED);
         shapeDrawer.setDefaultLineWidth(5f);
@@ -282,6 +294,9 @@ public class Player extends Entity {
     
     @Override
     public void postSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
-    
+        if (fixture == collisionBox && other instanceof Bounds) {
+            contactEdgeShape = (EdgeShape) otherFixture.getShape();
+            contactAngle = contact.getWorldManifold().getNormal().angleDeg();
+        }
     }
 }
