@@ -29,21 +29,13 @@ public class Player extends Entity {
     private final Array<Entity> headContactBlocks = new Array<>();
     private final Array<Entity> collisionBoxContactBlocks = new Array<>();
     private final static Vector2 temp = new Vector2();
-    private boolean onSlope;
     private boolean grounded;
-    private float slopeDownAngle;
     private final float maxSlopeAngle = 50;
     private final float slopeCheckDistanceH = 30;
-    private final float slopeCheckDistanceV = 30;
-    private float slopeSideAngle;
-    private float lastSlopeAngle;
+    private final float slopeCheckDistanceV = 90;
     private boolean canWalkOnSlope;
     private boolean canJump;
     private boolean jumping;
-    private boolean touchedTheGround;
-    private boolean hitVerticalRayCast;
-    private boolean hitHorizontalRayCast;
-    private EdgeShape slopeEdgeShape;
     private EdgeShape contactEdgeShape;
     private float contactAngle;
     private float lateralSpeed;
@@ -94,65 +86,37 @@ public class Player extends Entity {
     }
     
     private void slopeCheck() {
-        //check ground
-        if (!touchedTheGround) touchedTheGround = footContactBlocks.size > 0;
-        grounded = footContactBlocks.size > 0;
-        if (jumping && grounded && deltaY <= 0) {
-            jumping = false;
+        if (!grounded && !jumping) {
+            System.out.println("not grounded");
+            //horizontal check
+            world.rayCast((fixture, point, normal, fraction) -> {
+                if (fixture.getBody().getUserData() instanceof Bounds) {
+    
+                    return 1;
+                } else return -1;
+    
+            }, p2m(x), p2m(y), p2m(x + slopeCheckDistanceH), p2m(y));
+    
+            world.rayCast((fixture, point, normal, fraction) -> {
+                if (fixture.getBody().getUserData() instanceof Bounds) {
+    
+                    return 1;
+                } else return -1;
+            }, p2m(x), p2m(y), p2m(x - slopeCheckDistanceH), p2m(y));
+    
+            world.rayCast((fixture, point, normal, fraction) -> {
+                if (fixture.getBody().getUserData() instanceof Bounds) {
+                    contactEdgeShape = (EdgeShape) fixture.getShape();
+                    contactAngle = normal.angleDeg();
+                    grounded = true;
+                }
+                return 1;
+            }, p2m(x), p2m(y), p2m(x), p2m(y - slopeCheckDistanceV));
         }
         
-        slopeEdgeShape = null;
-        onSlope = false;
-        hitHorizontalRayCast = false;
-        //horizontal check
-        world.rayCast((fixture, point, normal, fraction) -> {
-            if (fixture.getBody().getUserData() instanceof Bounds) {
-                hitHorizontalRayCast = true;
-                onSlope = true;
-                slopeSideAngle = normal.angleDeg();
-                slopeEdgeShape = (EdgeShape) fixture.getShape();
-                return 1;
-            } else return -1;
+        canWalkOnSlope = Utils.isEqual360(contactAngle, 90, maxSlopeAngle) || Utils.isEqual360(contactAngle, 270, maxSlopeAngle);
         
-        }, p2m(x), p2m(y), p2m(x + slopeCheckDistanceH), p2m(y));
-    
-        if (!onSlope) world.rayCast((fixture, point, normal, fraction) -> {
-            if (fixture.getBody().getUserData() instanceof Bounds) {
-                hitHorizontalRayCast = true;
-                onSlope = true;
-                slopeSideAngle = normal.angleDeg();
-                slopeEdgeShape = (EdgeShape) fixture.getShape();
-                return 1;
-            } else return -1;
-        }, p2m(x), p2m(y), p2m(x - slopeCheckDistanceH), p2m(y));
-        
-        hitVerticalRayCast = false;
-        //vertical check
-        world.rayCast((fixture, point, normal, fraction) -> {
-            hitVerticalRayCast = true;
-            if (touchedTheGround) grounded = true;
-            slopeDownAngle = normal.angleDeg();
-            slopeEdgeShape = (EdgeShape) fixture.getShape();
-        
-            if (slopeDownAngle != lastSlopeAngle) {
-                onSlope = true;
-            }
-        
-            lastSlopeAngle = slopeDownAngle;
-        
-            return 1;
-        }, p2m(x), p2m(y), p2m(x), p2m(y - slopeCheckDistanceV));
-    
-        if (hitVerticalRayCast && (Utils.isEqual360(slopeDownAngle, 90, maxSlopeAngle) || Utils.isEqual360(slopeDownAngle, 270, maxSlopeAngle))) {
-            canWalkOnSlope = true;
-        } else if ((Utils.isEqual360(slopeSideAngle, 90, maxSlopeAngle) || Utils.isEqual360(slopeSideAngle, 270, maxSlopeAngle))) {
-            canWalkOnSlope = true;
-        } else {
-            canWalkOnSlope = false;
-        }
-        
-        if (!grounded) touchedTheGround = false;
-        canJump = grounded && !jumping && (!onSlope || canWalkOnSlope);
+        canJump = grounded && !jumping && canWalkOnSlope;
     }
     
     private static final Vector2 temp1 = new Vector2();
@@ -160,57 +124,46 @@ public class Player extends Entity {
     private static final Vector2 temp3 = new Vector2();
     
     private void applyMovement(float delta) {
-        if (grounded && !onSlope && !jumping) {
-//            System.out.println("grounded");
-            gravityY = 0;
-            if (footContactBlocks.size > 0) deltaY = 0;
-            
-            if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
-                lateralSpeed = Utils.approach(lateralSpeed, isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
-            } else lateralSpeed = Utils.approach(lateralSpeed, 0, playerWalkDeceleration * delta);
-            deltaX = lateralSpeed;
-        } else if (grounded && onSlope && canWalkOnSlope && !jumping) {
-//            System.out.println("slope");
+        if (grounded && canWalkOnSlope && !jumping) {
+            System.out.println("slope");
             gravityY = 0;
             
             temp1.set(x, y);
-            slopeEdgeShape.getVertex1(temp2);
+            contactEdgeShape.getVertex1(temp2);
             temp2.set(m2p(temp2.x), m2p(temp2.y));
-            slopeEdgeShape.getVertex2(temp3);
+            contactEdgeShape.getVertex2(temp3);
             temp3.set(m2p(temp3.x), m2p(temp3.y));
             var closest = Utils.closestPointInLine(temp1, temp2, temp3);
             
-            if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 1000 / MS_PER_UPDATE, slopeDownAngle + 180);
+            if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 1000 / MS_PER_UPDATE, contactAngle + 180);
             else setSpeed(0);
-//            setSpeed(0);
     
-            float angle = hitVerticalRayCast ? slopeDownAngle : hitHorizontalRayCast ? slopeSideAngle : 90;
+            float angle = contactAngle;
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
                 lateralSpeed = Utils.approach(lateralSpeed, isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
             } else {
                 lateralSpeed = Utils.approach(lateralSpeed, 0, playerWalkDeceleration * delta);
             }
             addMotion(lateralSpeed, angle - 90f);
-        } else if (grounded && onSlope && !canWalkOnSlope && !jumping) {
-//            System.out.println("sliding");
+        } else if (grounded && !canWalkOnSlope && !jumping) {
+            System.out.println("sliding");
             gravityY = 0;
     
             temp1.set(x, y);
-            slopeEdgeShape.getVertex1(temp2);
+            contactEdgeShape.getVertex1(temp2);
             temp2.set(m2p(temp2.x), m2p(temp2.y));
-            slopeEdgeShape.getVertex2(temp3);
+            contactEdgeShape.getVertex2(temp3);
             temp3.set(m2p(temp3.x), m2p(temp3.y));
             var closest = Utils.closestPointInLine(temp1, temp2, temp3);
     
-            if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 1000 / MS_PER_UPDATE, slopeDownAngle + 180);
+            if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 1000 / MS_PER_UPDATE, contactAngle + 180);
             else setSpeed(0);
-//            setSpeed(0);
     
-            float angle = hitVerticalRayCast ? slopeDownAngle : hitHorizontalRayCast ? slopeSideAngle : 90;
+            float angle = contactAngle;
             lateralSpeed = Utils.approach(lateralSpeed, Utils.isEqual360(angle, 0, 90) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
             addMotion(lateralSpeed, angle - 90f);
         } else {
-//            System.out.println("air");
+            System.out.println("air");
             gravityY = -playerGravity;
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
                 lateralSpeed = Utils.approach(lateralSpeed, isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
@@ -237,7 +190,7 @@ public class Player extends Entity {
         shapeDrawer.setColor(Color.RED);
         shapeDrawer.setDefaultLineWidth(5f);
         temp.set(20, 0);
-        temp.rotateDeg(slopeDownAngle);
+        temp.rotateDeg(contactAngle);
         shapeDrawer.line(x, y, x + temp.x, y + temp.y);
     }
     
@@ -266,6 +219,9 @@ public class Player extends Entity {
     @Override
     public void preSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (fixture == collisionBox && other instanceof Bounds) {
+            grounded = true;
+            jumping = false;
+            
             var boundsAngle = (contact.getWorldManifold().getNormal().angleDeg() + 90);
             if (Utils.isEqual360(boundsAngle, 180, maxSlopeAngle) || Utils.isEqual360(boundsAngle, 0, maxSlopeAngle)) {
                 contact.setFriction(1);
@@ -288,6 +244,10 @@ public class Player extends Entity {
                 headSensorBlocks.removeValue(other, true);
             } else if (fixture == collisionBox) {
                 collisionBoxContactBlocks.removeValue(other, true);
+            }
+    
+            if (fixture == collisionBox) {
+                grounded = false;
             }
         }
     }
