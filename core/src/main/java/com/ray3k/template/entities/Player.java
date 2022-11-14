@@ -67,7 +67,8 @@ public class Player extends Entity {
     
     @Override
     public void actBefore(float delta) {
-    
+//        System.out.println("new frame");
+//        groundShape = null;
     }
     
     @Override
@@ -86,28 +87,7 @@ public class Player extends Entity {
             if (headSensorBlocks.contains(entity, true)) headContactBlocks.add(entity);
         }
         
-        slopeCheck();
-        applyMovement(delta);
-    }
-    
-    private void slopeCheck() {
         if (!grounded && !falling) {
-            //horizontal check
-            world.rayCast((fixture, point, normal, fraction) -> {
-                if (fixture.getBody().getUserData() instanceof Bounds) {
-    
-                    return 1;
-                } else return -1;
-    
-            }, p2m(x), p2m(y), p2m(x + slopeCheckDistanceH), p2m(y));
-    
-            world.rayCast((fixture, point, normal, fraction) -> {
-                if (fixture.getBody().getUserData() instanceof Bounds) {
-    
-                    return 1;
-                } else return -1;
-            }, p2m(x), p2m(y), p2m(x - slopeCheckDistanceH), p2m(y));
-    
             world.rayCast((fixture, point, normal, fraction) -> {
                 if (fixture.getBody().getUserData() instanceof Bounds) {
                     groundShape = (EdgeShape) fixture.getShape();
@@ -117,10 +97,16 @@ public class Player extends Entity {
                 }
                 return 1;
             }, p2m(x), p2m(y), p2m(x), p2m(y - slopeCheckDistanceV));
-            
+    
             if (!grounded) falling = true;
+            
+            slopeCheck();
         }
         
+        applyMovement(delta);
+    }
+    
+    private void slopeCheck() {
         canWalkOnSlope = Utils.isEqual360(groundAngle, 90, maxSlopeAngle);
         canSlideOnSlope = Utils.isEqual360(groundAngle, 90, maxSlideAngle);
         
@@ -171,11 +157,11 @@ public class Player extends Entity {
             lateralSpeed = Utils.approach(lateralSpeed, Utils.isEqual360(angle, 0, 90) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
             addMotion(lateralSpeed, angle - 90f);
         } else if (grounded && !canWalkOnSlope && !canSlideOnSlope && !falling) {
-            System.out.println("wall");
+//            System.out.println("wall");
             gravityY = -playerGravity;
             lateralSpeed = 0;
         } else {
-            System.out.println("air");
+//            System.out.println("air");
             gravityY = -playerGravity;
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
                 lateralSpeed = Utils.approach(lateralSpeed, isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
@@ -238,6 +224,9 @@ public class Player extends Entity {
     public void preSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (fixture == collisionBox && other instanceof Bounds) {
             contact.setFriction(1f);
+            groundShape = null;
+            canWalkOnSlope = false;
+            canSlideOnSlope = false;
             if (MathUtils.isEqual(((BoundsData)otherFixture.getUserData()).angle, 90, maxSlopeAngle)) {
                 grounded = true;
                 falling = false;
@@ -269,9 +258,13 @@ public class Player extends Entity {
     @Override
     public void postSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (fixture == collisionBox && other instanceof Bounds) {
-            groundShape = (EdgeShape) otherFixture.getShape();
             contactAngle = contact.getWorldManifold().getNormal().angleDeg();
-            groundAngle = ((BoundsData)otherFixture.getUserData()).angle;
+            float newGroundAngle = ((BoundsData) otherFixture.getUserData()).angle;
+            if (!canSlideOnSlope || !canWalkOnSlope) {
+                groundShape = (EdgeShape) otherFixture.getShape();
+                groundAngle = newGroundAngle;
+                slopeCheck();
+            }
         }
     }
 }

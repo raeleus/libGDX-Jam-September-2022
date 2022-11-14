@@ -473,4 +473,14 @@ public class Utils {
         linePoint2.set(x2, y2);
         return closestPointInLine(point, linePoint1, linePoint2);
     }
+    
+    public static float degDifference(float sourceAngle, float targetAngle) {
+        var angle = targetAngle - sourceAngle;
+        angle = mod((angle + 180), 360) - 180;
+        return angle;
+    }
+    
+    private static float mod(float a, float n) {
+        return (a % n + n) % n;
+    }
 }
