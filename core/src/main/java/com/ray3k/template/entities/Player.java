@@ -204,6 +204,12 @@ public class Player extends Entity {
         temp.set(20, 0);
         temp.rotateDeg(contactAngle);
         shapeDrawer.line(x, y, x + temp.x, y + temp.y);
+    
+        shapeDrawer.setColor(Color.BLUE);
+        shapeDrawer.setDefaultLineWidth(5f);
+        temp.set(20, 0);
+        temp.rotateDeg(groundAngle);
+        shapeDrawer.line(x, y, x + temp.x, y + temp.y);
     }
     
     @Override

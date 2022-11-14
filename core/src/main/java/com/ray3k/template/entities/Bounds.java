@@ -28,7 +28,7 @@ public class Bounds extends Entity {
         body.setUserData(this);
         
         boolean clockwise = Utils.isClockwise(points);
-        
+        System.out.println("new shape");
         for (int i = 0; i + 1 < points.length; i += 2) {
             EdgeShape edgeShape = new EdgeShape();
     
@@ -70,6 +70,7 @@ public class Bounds extends Entity {
             
             fixture.setUserData(data);
             edgeShape.dispose();
+            System.out.println(points[i] + "," + points[i + 1] + " " + clockwise);
         }
     }
     
