@@ -60,12 +60,12 @@ public class Bounds extends Entity {
             var data = new BoundsData();
             temp1.set(nextX, nextY);
             temp2.set(points[i], points[i + 1]);
-            if (clockwise) {
+            if (!clockwise) {
                 temp2.sub(temp1);
-                data.angle = temp2.angleDeg();
+                data.angle = (temp2.angleDeg() + 90) % 360;
             } else {
                 temp1.sub(temp2);
-                data.angle = temp1.angleDeg();
+                data.angle = (temp1.angleDeg() + 90) % 360;
             }
             
             fixture.setUserData(data);
