@@ -33,6 +33,7 @@ public class GameScreen extends JamScreen {
     public Stage stage;
     public boolean paused;
     private Label fpsLabel;
+    public static Label statsLabel;
     
     @Override
     public void show() {
@@ -51,6 +52,10 @@ public class GameScreen extends JamScreen {
         root.pad(10);
         stage.addActor(root);
         
+        statsLabel = new Label("", skin);
+        root.add(statsLabel);
+        
+        root.row();
         fpsLabel = new Label("test", skin);
         root.add(fpsLabel);
         

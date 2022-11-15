@@ -1,8 +1,6 @@
 package com.ray3k.template.entities;
 
-import com.badlogic.gdx.Input.Buttons;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
 import com.badlogic.gdx.physics.box2d.Contact;
@@ -11,6 +9,7 @@ import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.utils.Array;
 import com.ray3k.template.*;
 import com.ray3k.template.entities.Bounds.*;
+import com.ray3k.template.screens.*;
 
 import static com.ray3k.template.Core.*;
 import static com.ray3k.template.Resources.SpineZebra.*;
@@ -88,6 +87,7 @@ public class Player extends Entity {
             if (headSensorBlocks.contains(entity, true)) headContactBlocks.add(entity);
         }
         
+        
         if (!grounded && !falling) {
             world.rayCast((fixture, point, normal, fraction) -> {
                 if (fixture.getBody().getUserData() instanceof Bounds) {
@@ -105,6 +105,9 @@ public class Player extends Entity {
         }
         
         applyMovement(delta);
+    
+        GameScreen.statsLabel.setText("Grounded: " + grounded +
+                "\nFalling: " + falling);
     }
     
     private void slopeCheck() {
@@ -226,13 +229,17 @@ public class Player extends Entity {
             groundShape = null;
             canWalkOnSlope = false;
             canSlideOnSlope = false;
+    
             if (Utils.isEqual360(((BoundsData)otherFixture.getUserData()).angle, 90, maxSlideAngle)) {
                 grounded = true;
                 falling = false;
-                
             }
             
-            contact.setFriction(1f);
+            if (Utils.isEqual360(contact.getWorldManifold().getNormal().angleDeg(), 90, maxSlideAngle)) {
+                contact.setFriction(1f);
+            } else {
+                contact.setFriction(0f);
+            }
         }
     }
     
