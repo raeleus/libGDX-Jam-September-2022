@@ -53,11 +53,11 @@ public class GameScreen extends JamScreen {
         stage.addActor(root);
         
         statsLabel = new Label("", skin);
-        root.add(statsLabel);
+        root.add(statsLabel).left();
         
         root.row();
         fpsLabel = new Label("test", skin);
-        root.add(fpsLabel);
+        root.add(fpsLabel).left();
         
         stage.addListener(new InputListener() {
             @Override

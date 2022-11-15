@@ -7,6 +7,7 @@ import com.badlogic.gdx.physics.box2d.Contact;
 import com.badlogic.gdx.physics.box2d.EdgeShape;
 import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.ObjectSet;
 import com.ray3k.template.*;
 import com.ray3k.template.entities.Bounds.*;
 import com.ray3k.template.screens.*;
@@ -44,6 +45,8 @@ public class Player extends Entity {
     private float contactAngle;
     private float groundAngle;
     private float lateralSpeed;
+    private ObjectSet<Fixture> touchedGroundFixtures = new ObjectSet<>();
+    private Fixture lastTouchedGroundFixture;
     
     @Override
     public void create() {
@@ -87,14 +90,18 @@ public class Player extends Entity {
             if (headSensorBlocks.contains(entity, true)) headContactBlocks.add(entity);
         }
         
+        grounded = touchedGroundFixtures.size > 0;
         
         if (!grounded && !falling) {
             world.rayCast((fixture, point, normal, fraction) -> {
                 if (fixture.getBody().getUserData() instanceof Bounds) {
-                    groundShape = (EdgeShape) fixture.getShape();
-                    contactAngle = normal.angleDeg();
-                    groundAngle = contactAngle;
-                    grounded = true;
+                    var data = (BoundsData) fixture.getUserData();
+                    if (lastTouchedGroundFixture == data.previousFixture || lastTouchedGroundFixture == data.nextFixture || lastTouchedGroundFixture == fixture) {
+                        groundShape = (EdgeShape) fixture.getShape();
+                        contactAngle = normal.angleDeg();
+                        groundAngle = contactAngle;
+                        grounded = true;
+                    }
                 }
                 return 1;
             }, p2m(x), p2m(y), p2m(x), p2m(y - slopeCheckDistanceV));
@@ -103,11 +110,46 @@ public class Player extends Entity {
 
             slopeCheck();
         }
+    
+//        if (!grounded && !falling) {
+//            world.rayCast((fixture, point, normal, fraction) -> {
+//                if (fixture.getBody().getUserData() instanceof Bounds) {
+//                    groundShape = (EdgeShape) fixture.getShape();
+//                    contactAngle = normal.angleDeg();
+//                    groundAngle = contactAngle;
+//                    grounded = true;
+//                }
+//                return 1;
+//            }, p2m(x), p2m(y), p2m(x - slopeCheckDistanceH), p2m(y));
+//
+//            if (!grounded) falling = true;
+//
+//            slopeCheck();
+//        }
+//
+//        if (!grounded && !falling) {
+//            world.rayCast((fixture, point, normal, fraction) -> {
+//                if (fixture.getBody().getUserData() instanceof Bounds) {
+//                    groundShape = (EdgeShape) fixture.getShape();
+//                    contactAngle = normal.angleDeg();
+//                    groundAngle = contactAngle;
+//                    grounded = true;
+//                }
+//                return 1;
+//            }, p2m(x), p2m(y), p2m(x + slopeCheckDistanceH), p2m(y));
+//
+//            if (!grounded) falling = true;
+//
+//            slopeCheck();
+//        }
         
         applyMovement(delta);
     
         GameScreen.statsLabel.setText("Grounded: " + grounded +
-                "\nFalling: " + falling);
+                "\nFalling: " + falling +
+                "\nTouched Ground Fixtures: " + touchedGroundFixtures.size +
+                "\nLateral Speed: " + lateralSpeed +
+                "\ndeltaX: " + deltaX);
     }
     
     private void slopeCheck() {
@@ -220,6 +262,12 @@ public class Player extends Entity {
             } else if (fixture == collisionBox) {
                 collisionBoxContactBlocks.add(other);
             }
+    
+            if (fixture == collisionBox && Utils.isEqual360(((BoundsData)otherFixture.getUserData()).angle, 90, maxSlideAngle)) {
+//                System.out.println("begin " + otherFixture + " " + time);
+                touchedGroundFixtures.add(otherFixture);
+                lastTouchedGroundFixture = otherFixture;
+            }
         }
     }
     
@@ -231,7 +279,8 @@ public class Player extends Entity {
             canSlideOnSlope = false;
     
             if (Utils.isEqual360(((BoundsData)otherFixture.getUserData()).angle, 90, maxSlideAngle)) {
-                grounded = true;
+//                System.out.println("presolve");
+//                grounded = true;
                 falling = false;
             }
             
@@ -259,7 +308,9 @@ public class Player extends Entity {
             }
     
             if (fixture == collisionBox) {
-                grounded = false;
+//                System.out.println("end " + otherFixture + " " + time);
+//                grounded = false;
+                touchedGroundFixtures.remove(otherFixture);
             }
         }
     }

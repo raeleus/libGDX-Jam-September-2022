@@ -28,6 +28,8 @@ public class Bounds extends Entity {
         body.setUserData(this);
         
         boolean clockwise = Utils.isClockwise(points);
+        Fixture previousFixture = null;
+        Fixture firstFixture = null;
         for (int i = 0; i + 1 < points.length; i += 2) {
             EdgeShape edgeShape = new EdgeShape();
     
@@ -66,8 +68,13 @@ public class Bounds extends Entity {
                 temp1.sub(temp2);
                 data.angle = (temp1.angleDeg() + 90) % 360;
             }
+            data.previousFixture = previousFixture;
+            if (previousFixture != null) ((BoundsData) previousFixture.getUserData()).nextFixture = fixture;
+            if (i == points.length - 2) data.nextFixture = firstFixture;
             
             fixture.setUserData(data);
+            previousFixture = fixture;
+            if (i == 0) firstFixture = fixture;
             edgeShape.dispose();
         }
     }
@@ -114,5 +121,7 @@ public class Bounds extends Entity {
     
     public static class BoundsData {
         public float angle;
+        public Fixture previousFixture;
+        public Fixture nextFixture;
     }
 }
