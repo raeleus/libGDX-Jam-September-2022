@@ -1,5 +1,6 @@
 package com.ray3k.template.entities;
 
+import com.badlogic.gdx.Input.Buttons;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
@@ -97,9 +98,9 @@ public class Player extends Entity {
                 }
                 return 1;
             }, p2m(x), p2m(y), p2m(x), p2m(y - slopeCheckDistanceV));
-    
+
             if (!grounded) falling = true;
-            
+
             slopeCheck();
         }
         
@@ -109,7 +110,6 @@ public class Player extends Entity {
     private void slopeCheck() {
         canWalkOnSlope = Utils.isEqual360(groundAngle, 90, maxSlopeAngle);
         canSlideOnSlope = Utils.isEqual360(groundAngle, 90, maxSlideAngle);
-        
         canJump = grounded && !falling && canWalkOnSlope;
     }
     
@@ -129,7 +129,7 @@ public class Player extends Entity {
             temp3.set(m2p(temp3.x), m2p(temp3.y));
             var closest = Utils.closestPointInLine(temp1, temp2, temp3);
             
-            if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 1000 / MS_PER_UPDATE, groundAngle + 180);
+            if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 100 / MS_PER_UPDATE, contactAngle + 180);
             else setSpeed(0);
     
             float angle = contactAngle;
@@ -150,7 +150,7 @@ public class Player extends Entity {
             temp3.set(m2p(temp3.x), m2p(temp3.y));
             var closest = Utils.closestPointInLine(temp1, temp2, temp3);
     
-            if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 1000 / MS_PER_UPDATE, contactAngle + 180);
+            if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 100 / MS_PER_UPDATE, contactAngle + 180);
             else setSpeed(0);
     
             float angle = contactAngle;
@@ -223,14 +223,16 @@ public class Player extends Entity {
     @Override
     public void preSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (fixture == collisionBox && other instanceof Bounds) {
-            contact.setFriction(1f);
             groundShape = null;
             canWalkOnSlope = false;
             canSlideOnSlope = false;
-            if (MathUtils.isEqual(((BoundsData)otherFixture.getUserData()).angle, 90, maxSlopeAngle)) {
+            if (Utils.isEqual360(((BoundsData)otherFixture.getUserData()).angle, 90, maxSlideAngle)) {
                 grounded = true;
                 falling = false;
+                
             }
+            
+            contact.setFriction(1f);
         }
     }
     
@@ -259,10 +261,9 @@ public class Player extends Entity {
     public void postSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (fixture == collisionBox && other instanceof Bounds) {
             contactAngle = contact.getWorldManifold().getNormal().angleDeg();
-            float newGroundAngle = ((BoundsData) otherFixture.getUserData()).angle;
             if (!canSlideOnSlope || !canWalkOnSlope) {
                 groundShape = (EdgeShape) otherFixture.getShape();
-                groundAngle = newGroundAngle;
+                groundAngle = ((BoundsData) otherFixture.getUserData()).angle;
                 slopeCheck();
             }
         }
