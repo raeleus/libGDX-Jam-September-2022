@@ -21,7 +21,7 @@ public class Player extends Entity {
     private Fixture headSensor;
     private Fixture leftSensor;
     private Fixture rightSensor;
-    private Fixture collisionBox;
+    private Fixture collisionBall;
     private final Array<Entity> footSensorBlocks = new Array<>();
     private final Array<Entity> rightSensorBlocks = new Array<>();
     private final Array<Entity> leftSensorBlocks = new Array<>();
@@ -33,6 +33,7 @@ public class Player extends Entity {
     private final Array<Entity> collisionBoxContactBlocks = new Array<>();
     private final static Vector2 temp = new Vector2();
     private boolean grounded;
+    private final float radius = 25;
     private final float maxSlopeAngle = 50;
     private final float maxSlideAngle = 80;
     private final float slopeCheckDistanceH = 30;
@@ -55,9 +56,10 @@ public class Player extends Entity {
         depth = DEPTH_PLAYER;
         animationData.setDefaultMix(.25f);
         setSkeletonData(skeletonData, animationData);
-        collisionBox = setCollisionCircle(0, 25, 25, BodyType.DynamicBody);
-        collisionBox.getFilterData().categoryBits = CATEGORY_ENTITY;
-        collisionBox.getFilterData().maskBits = CATEGORY_BOUNDS;
+        collisionBall = setCollisionCircle(0, radius, radius, BodyType.DynamicBody);
+        
+        collisionBall.getFilterData().categoryBits = CATEGORY_ENTITY;
+        collisionBall.getFilterData().maskBits = CATEGORY_BOUNDS;
         footSensor = setSensorBox(slotFootSensor, BodyType.DynamicBody);
         headSensor = setSensorBox(slotHeadSensor, BodyType.DynamicBody);
         leftSensor = setSensorBox(slotLeftSensor, BodyType.DynamicBody);
@@ -243,11 +245,11 @@ public class Player extends Entity {
                 leftSensorBlocks.add(other);
             } else if (fixture == headSensor) {
                 headSensorBlocks.add(other);
-            } else if (fixture == collisionBox) {
+            } else if (fixture == collisionBall) {
                 collisionBoxContactBlocks.add(other);
             }
     
-            if (fixture == collisionBox && Utils.isEqual360(((BoundsData)otherFixture.getUserData()).angle, 90, maxSlideAngle)) {
+            if (fixture == collisionBall && Utils.isEqual360(((BoundsData)otherFixture.getUserData()).angle, 90, maxSlideAngle)) {
                 touchedGroundFixtures.add(otherFixture);
                 lastTouchedGroundFixture = otherFixture;
             }
@@ -256,7 +258,7 @@ public class Player extends Entity {
     
     @Override
     public void preSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
-        if (fixture == collisionBox && other instanceof Bounds) {
+        if (fixture == collisionBall && other instanceof Bounds) {
             groundShape = null;
             canWalkOnSlope = false;
             canSlideOnSlope = false;
@@ -286,11 +288,11 @@ public class Player extends Entity {
                 leftSensorBlocks.removeValue(other, true);
             } else if (fixture == headSensor) {
                 headSensorBlocks.removeValue(other, true);
-            } else if (fixture == collisionBox) {
+            } else if (fixture == collisionBall) {
                 collisionBoxContactBlocks.removeValue(other, true);
             }
     
-            if (fixture == collisionBox) {
+            if (fixture == collisionBall) {
                 touchedGroundFixtures.remove(otherFixture);
             }
         }
@@ -298,7 +300,7 @@ public class Player extends Entity {
     
     @Override
     public void postSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
-        if (fixture == collisionBox && other instanceof Bounds) {
+        if (fixture == collisionBall && other instanceof Bounds) {
             float angle = contact.getWorldManifold().getNormal().angleDeg();
             if (Utils.isEqual360(angle, 90, maxSlideAngle)) contactAngle = angle;
             
