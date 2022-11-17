@@ -201,7 +201,7 @@ public class Player extends Entity {
         }
         
         if (canJump) {
-            if (isBindingPressed(Binding.JUMP)) {
+            if (isBindingJustPressed(Binding.JUMP)) {
                 falling = true;
                 canJump = false;
                 deltaY = playerJumpSpeed;
@@ -263,7 +263,7 @@ public class Player extends Entity {
             canWalkOnSlope = false;
             canSlideOnSlope = false;
     
-            if (Utils.isEqual360(((BoundsData)otherFixture.getUserData()).angle, 90, maxSlideAngle)) {
+            if (Utils.isEqual360(((BoundsData)otherFixture.getUserData()).angle, 90, maxSlideAngle) && deltaY < 0) {
                 falling = false;
             }
             
