@@ -31,6 +31,7 @@ public class Bounds extends Entity {
         Fixture previousFixture = null;
         Fixture firstFixture = null;
         for (int i = 0; i + 1 < points.length; i += 2) {
+            System.out.println("new fixture");
             EdgeShape edgeShape = new EdgeShape();
     
             float nextX, nextY;
@@ -70,12 +71,24 @@ public class Bounds extends Entity {
             }
             data.previousFixture = previousFixture;
             if (previousFixture != null) ((BoundsData) previousFixture.getUserData()).nextFixture = fixture;
-            if (i == points.length - 2) data.nextFixture = firstFixture;
+            if (i == points.length - 2) {
+                data.nextFixture = firstFixture;
+                ((BoundsData)firstFixture.getUserData()).previousFixture = fixture;
+            }
             
             fixture.setUserData(data);
             previousFixture = fixture;
             if (i == 0) firstFixture = fixture;
             edgeShape.dispose();
+        }
+        
+        if (!clockwise) {
+            for (var fixture : body.getFixtureList()) {
+                var boundsData = (BoundsData) fixture.getUserData();
+                var temp = boundsData.previousFixture;
+                boundsData.previousFixture = boundsData.nextFixture;
+                boundsData.nextFixture = temp;
+            }
         }
     }
     
