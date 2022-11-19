@@ -769,7 +769,7 @@ public class Resources {
 
         public static int playerMaxFallXspeed = 600;
 
-        public static int playerJumpSpeed = 800;
+        public static int playerJumpSpeed = 1500;
 
         public static int playerJumpXacceleration = 1500;
 

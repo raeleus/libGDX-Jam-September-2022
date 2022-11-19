@@ -14,7 +14,7 @@
 "playerMaxFallYspeed": 1500,
 "playerFallXacceleration": 1500,
 "playerMaxFallXspeed": 600,
-"playerJumpSpeed": 800,
+"playerJumpSpeed": 1500,
 "playerJumpXacceleration": 1500,
 "playerJumpXspeed": 600,
 "playerJumpYacceleration": 5000,
