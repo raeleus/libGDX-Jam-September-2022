@@ -23,15 +23,15 @@ public class Player extends Entity {
     private Fixture rightSensor;
     private Fixture bodyFixture;
     private Fixture footFixture;
-    private final Array<Entity> footSensorBlocks = new Array<>();
-    private final Array<Entity> rightSensorBlocks = new Array<>();
-    private final Array<Entity> leftSensorBlocks = new Array<>();
-    private final Array<Entity> headSensorBlocks = new Array<>();
-    private final Array<Entity> footContactBlocks = new Array<>();
-    private final Array<Entity> rightContactBlocks = new Array<>();
-    private final Array<Entity> leftContactBlocks = new Array<>();
-    private final Array<Entity> headContactBlocks = new Array<>();
-    private final Array<Entity> collisionBoxContactBlocks = new Array<>();
+    private final Array<Fixture> footSensorBlocks = new Array<>();
+    private final Array<Fixture> rightSensorBlocks = new Array<>();
+    private final Array<Fixture> leftSensorBlocks = new Array<>();
+    private final Array<Fixture> headSensorBlocks = new Array<>();
+    private final Array<Fixture> footContactBlocks = new Array<>();
+    private final Array<Fixture> rightContactBlocks = new Array<>();
+    private final Array<Fixture> leftContactBlocks = new Array<>();
+    private final Array<Fixture> headContactBlocks = new Array<>();
+    private final Array<Fixture> collisionBoxContactBlocks = new Array<>();
     private final static Vector2 temp = new Vector2();
     private boolean grounded;
     private final float radius = 25;
@@ -41,6 +41,7 @@ public class Player extends Entity {
     private final float maxCeilingAngle = 85;
     private final float slopeCheckDistanceH = 30;
     private final float slopeCheckDistanceV = 90;
+    private final float slopeStickForce = 600;
     private boolean canWalkOnSlope;
     private boolean canSlideOnSlope;
     private boolean canJump;
@@ -83,7 +84,6 @@ public class Player extends Entity {
     
     @Override
     public void actBefore(float delta) {
-        System.out.println("new frame");
         touchingWall = false;
         hitHead = false;
     }
@@ -113,8 +113,9 @@ public class Player extends Entity {
                     if (lastTouchedGroundFixture == data.previousFixture || lastTouchedGroundFixture == data.nextFixture || lastTouchedGroundFixture == fixture) {
                         groundShape = (EdgeShape) fixture.getShape();
                         contactAngle = normal.angleDeg();
-                        groundAngle = contactAngle;
+                        groundAngle = ((BoundsData)fixture.getUserData()).angle;
                         grounded = true;
+                        return 0;
                     }
                 }
                 return 1;
@@ -151,14 +152,7 @@ public class Player extends Entity {
 //            System.out.println("slope");
             gravityY = 0;
             
-            temp1.set(x, y);
-            groundShape.getVertex1(temp2);
-            temp2.set(m2p(temp2.x), m2p(temp2.y));
-            groundShape.getVertex2(temp3);
-            temp3.set(m2p(temp3.x), m2p(temp3.y));
-            var closest = Utils.closestPointInLine(temp1, temp2, temp3);
-            
-            if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 100 / MS_PER_UPDATE, contactAngle + 180);
+            if (footContactBlocks.size == 0) setMotion(slopeStickForce, contactAngle + 180);
             else setSpeed(0);
             
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
@@ -184,7 +178,7 @@ public class Player extends Entity {
             temp3.set(m2p(temp3.x), m2p(temp3.y));
             var closest = Utils.closestPointInLine(temp1, temp2, temp3);
     
-            if (footContactBlocks.size == 0) setMotion((closest.len() - 25) * 100 / MS_PER_UPDATE, contactAngle + 180);
+            if (footContactBlocks.size == 0) setMotion(slopeStickForce, contactAngle + 180);
             else setSpeed(0);
             
             lateralSpeed = Utils.approach(lateralSpeed, Utils.isEqual360(contactAngle, 0, 90) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
@@ -252,15 +246,15 @@ public class Player extends Entity {
     public void beginContact(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (other instanceof Bounds) {
             if (fixture == footSensor) {
-                footSensorBlocks.add(other);
+                footSensorBlocks.add(otherFixture);
             } else if (fixture == rightSensor) {
-                rightSensorBlocks.add(other);
+                rightSensorBlocks.add(otherFixture);
             } else if (fixture == leftSensor) {
-                leftSensorBlocks.add(other);
+                leftSensorBlocks.add(otherFixture);
             } else if (fixture == headSensor) {
-                headSensorBlocks.add(other);
+                headSensorBlocks.add(otherFixture);
             } else if (fixture == footFixture) {
-                collisionBoxContactBlocks.add(other);
+                collisionBoxContactBlocks.add(otherFixture);
             }
     
             if (fixture == footFixture && Utils.isEqual360(((BoundsData)otherFixture.getUserData()).angle, 90, maxSlideAngle)) {
@@ -310,15 +304,15 @@ public class Player extends Entity {
     public void endContact(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (other instanceof Bounds) {
             if (fixture == footSensor) {
-                footSensorBlocks.removeValue(other, true);
+                footSensorBlocks.removeValue(otherFixture, true);
             } else if (fixture == rightSensor) {
-                rightSensorBlocks.removeValue(other, true);
+                rightSensorBlocks.removeValue(otherFixture, true);
             } else if (fixture == leftSensor) {
-                leftSensorBlocks.removeValue(other, true);
+                leftSensorBlocks.removeValue(otherFixture, true);
             } else if (fixture == headSensor) {
-                headSensorBlocks.removeValue(other, true);
+                headSensorBlocks.removeValue(otherFixture, true);
             } else if (fixture == footFixture) {
-                collisionBoxContactBlocks.removeValue(other, true);
+                collisionBoxContactBlocks.removeValue(otherFixture, true);
             }
     
             if (fixture == footFixture) {
