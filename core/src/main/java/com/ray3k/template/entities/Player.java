@@ -41,7 +41,7 @@ public class Player extends Entity {
     private final float maxCeilingAngle = 85;
     private final float slopeCheckDistanceH = 30;
     private final float slopeCheckDistanceV = 90;
-    private final float slopeStickForce = 600;
+    private final float slopeStickForce = 1000;
     private boolean canWalkOnSlope;
     private boolean canSlideOnSlope;
     private boolean canJump;
@@ -193,19 +193,17 @@ public class Player extends Entity {
 //            System.out.println("air");
             gravityY = -playerGravity;
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
-                lateralSpeed = Utils.approach(lateralSpeed, isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
-            } else lateralSpeed = Utils.approach(lateralSpeed, 0, playerWalkDeceleration * delta);
+                deltaX = Utils.approach(deltaX, isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
+            } else deltaX = Utils.approach(deltaX, 0, playerWalkDeceleration * delta);
     
             if (touchingWall) {
-                if (lateralSpeed > 0 && Utils.isEqual360(wallAngle, 180, 90)) lateralSpeed = 0;
-                else if (lateralSpeed < 0 && Utils.isEqual360(wallAngle, 0, 90)) lateralSpeed = 0;
+                if (deltaX > 0 && Utils.isEqual360(wallAngle, 180, 90)) deltaX = 0;
+                else if (deltaX < 0 && Utils.isEqual360(wallAngle, 0, 90)) deltaX = 0;
             }
             
             if (hitHead) {
                 if (deltaY > 0) deltaY = 0;
             }
-            
-            deltaX = lateralSpeed;
         }
         
         if (canJump) {
