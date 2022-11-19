@@ -51,10 +51,11 @@ public class Player extends Entity {
     private float groundAngle;
     private float lateralSpeed;
     private ObjectSet<Fixture> touchedGroundFixtures = new ObjectSet<>();
-    private Fixture lastTouchedGroundFixture;
+    private ObjectSet<Fixture> lastTouchedGroundFixtures = new ObjectSet<>();
     private boolean touchingWall;
     private float wallAngle;
     private boolean hitHead;
+    private boolean clearLastTouchedGroundFixtures;
     
     @Override
     public void create() {
@@ -86,6 +87,7 @@ public class Player extends Entity {
     public void actBefore(float delta) {
         touchingWall = false;
         hitHead = false;
+        clearLastTouchedGroundFixtures = true;
     }
     
     @Override
@@ -110,7 +112,7 @@ public class Player extends Entity {
             world.rayCast((fixture, point, normal, fraction) -> {
                 if (fixture.getBody().getUserData() instanceof Bounds) {
                     var data = (BoundsData) fixture.getUserData();
-                    if (lastTouchedGroundFixture == data.previousFixture || lastTouchedGroundFixture == data.nextFixture || lastTouchedGroundFixture == fixture) {
+                    if (lastTouchedGroundFixtures.contains(data.previousFixture) || lastTouchedGroundFixtures.contains(data.nextFixture) || lastTouchedGroundFixtures.contains(fixture)) {
                         groundShape = (EdgeShape) fixture.getShape();
                         contactAngle = normal.angleDeg();
                         groundAngle = ((BoundsData)fixture.getUserData()).angle;
@@ -256,8 +258,12 @@ public class Player extends Entity {
             }
     
             if (fixture == footFixture && Utils.isEqual360(((BoundsData)otherFixture.getUserData()).angle, 90, maxSlideAngle)) {
+                if (clearLastTouchedGroundFixtures) {
+                    lastTouchedGroundFixtures.clear();
+                    clearLastTouchedGroundFixtures = false;
+                }
                 touchedGroundFixtures.add(otherFixture);
-                lastTouchedGroundFixture = otherFixture;
+                lastTouchedGroundFixtures.add(otherFixture);
             }
         }
     }
@@ -275,7 +281,10 @@ public class Player extends Entity {
     
                 if (Utils.isEqual360(fixtureAngle, 90,
                         maxSlideAngle) && deltaY < 0) {
-                    falling = false;
+                    if (falling) {
+                        falling = false;
+                        lateralSpeed = deltaX;
+                    }
                 }
     
                 if (Utils.isEqual360(normalAngle, 90, maxSlideAngle)) {
