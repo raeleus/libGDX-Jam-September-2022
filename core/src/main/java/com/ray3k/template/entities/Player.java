@@ -32,14 +32,17 @@ public class Player extends Entity {
     private final Array<Fixture> collisionBoxContactBlocks = new Array<>();
     private final static Vector2 temp = new Vector2();
     private boolean grounded;
-    private final float radius = 25;
+    private final float footRadius = 25;
+    private final float footOffsetX = 0;
+    private final float footOffsetY = 25;
+    private float footRayOffsetX;
+    private float footRayOffsetY;
     private final float maxSlopeAngle = 50;
     private final float maxSlideAngle = 80;
     private final float maxCeilingHitAngle = 30;
     private final float maxCeilingAngle = 85;
-    private final float slopeCheckDistanceH = 30;
-    private final float slopeCheckDistanceV = 90;
-    private final float slopeStickForce = 1000;
+    private final float footRayDistance = 90;
+    private final float slopeStickForce = 100;
     private boolean canWalkOnSlope;
     private boolean canSlideOnSlope;
     private boolean canJump;
@@ -61,9 +64,12 @@ public class Player extends Entity {
         animationData.setDefaultMix(.25f);
         setSkeletonData(skeletonData, animationData);
         
-        footFixture = setCollisionCircle(0, radius, radius, BodyType.DynamicBody);
+        footFixture = setCollisionCircle(footOffsetX, footOffsetY, footRadius, BodyType.DynamicBody);
         footFixture.getFilterData().categoryBits = CATEGORY_ENTITY;
         footFixture.getFilterData().maskBits = CATEGORY_BOUNDS;
+        
+        footRayOffsetX = footOffsetX;
+        footRayOffsetY = footOffsetY - footRadius;
         
         bodyFixture = setCollisionBox(slotBbox, BodyType.DynamicBody);
         bodyFixture.getFilterData().categoryBits = CATEGORY_ENTITY;
@@ -119,7 +125,7 @@ public class Player extends Entity {
                     }
                 }
                 return 1;
-            }, p2m(x), p2m(y), p2m(x), p2m(y - slopeCheckDistanceV));
+            }, p2m(x + footRayOffsetX), p2m(y + footRayOffsetY), p2m(x + footRayOffsetX), p2m(y + footRayOffsetY - footRayDistance));
 
             if (!grounded) falling = true;
 
@@ -219,8 +225,7 @@ public class Player extends Entity {
     public void draw(float delta) {
         shapeDrawer.setColor(Color.GREEN);
         shapeDrawer.setDefaultLineWidth(5f);
-        shapeDrawer.line(x - slopeCheckDistanceH, y, x + slopeCheckDistanceH, y);
-        shapeDrawer.line(x, y, x, y - slopeCheckDistanceV);
+        shapeDrawer.line(x + footRayOffsetX, y + footRayOffsetY, x + footOffsetX, y + footOffsetY - footRayDistance);
         
         shapeDrawer.setColor(Color.RED);
         shapeDrawer.setDefaultLineWidth(5f);
@@ -298,18 +303,19 @@ public class Player extends Entity {
 //                    System.out.println(manifold.getPoints()[i]);
 //                    ((PolygonShape)bodyFixture.getShape()).
 //                }
-                if (Utils.isEqual360(fixtureAngle, 270, maxCeilingAngle) && Utils.isEqual360(normalAngle, 270, maxCeilingAngle)) {
-                    System.out.println("hit head");
-                    contact.setEnabled(true);
-                    if (Utils.isEqual360(fixtureAngle, 270, maxCeilingHitAngle) && Utils.isEqual360(normalAngle, 270, maxCeilingHitAngle)) {
-                        hitHead = true;
-                    }
-                } else if (!Utils.isEqual360(fixtureAngle, 90, maxSlideAngle) && Utils.isEqual360(contactAngle, fixtureAngle, 90) && (rightSensorBlocks.contains(otherFixture, true) || leftSensorBlocks.contains(otherFixture, true))) {
-                    System.out.println("hit wall " + fixtureAngle + " " + contactAngle);
-                    contact.setEnabled(true);
-                } else {
-                    contact.setEnabled(false);
-                }
+//                if (Utils.isEqual360(fixtureAngle, 270, maxCeilingAngle) && Utils.isEqual360(normalAngle, 270, maxCeilingAngle)) {
+//                    System.out.println("hit head");
+//                    contact.setEnabled(true);
+//                    if (Utils.isEqual360(fixtureAngle, 270, maxCeilingHitAngle) && Utils.isEqual360(normalAngle, 270, maxCeilingHitAngle)) {
+//                        hitHead = true;
+//                    }
+//                } else if (!Utils.isEqual360(fixtureAngle, 90, maxSlideAngle) && Utils.isEqual360(contactAngle, fixtureAngle, 90) && (rightSensorBlocks.contains(otherFixture, true) || leftSensorBlocks.contains(otherFixture, true))) {
+//                    System.out.println("hit wall " + fixtureAngle + " " + contactAngle);
+//                    contact.setEnabled(true);
+//                } else {
+//                    contact.setEnabled(false);
+//                }
+                contact.setEnabled(false);
             }
         }
     }
