@@ -1,6 +1,7 @@
 package com.ray3k.template.entities;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
@@ -13,9 +14,9 @@ import com.ray3k.template.screens.*;
 import static com.ray3k.template.Core.*;
 import static com.ray3k.template.Resources.SpineZebra.*;
 import static com.ray3k.template.Resources.Values.*;
+import static com.ray3k.template.entities.Player.MovementMode.*;
 
 public class Player extends Entity {
-    private Fixture footSensor;
     private Fixture bodyFixture;
     private Fixture footFixture;
     private final static Vector2 temp = new Vector2();
@@ -45,6 +46,10 @@ public class Player extends Entity {
     private float wallAngle;
     private boolean hitHead;
     private boolean clearLastTouchedGroundFixtures;
+    private MovementMode movementMode;
+    public enum MovementMode {
+        WALKING, SLIDING, FALLING
+    }
     
     @Override
     public void create() {
@@ -106,7 +111,8 @@ public class Player extends Entity {
         
         applyMovement(delta);
     
-        GameScreen.statsLabel.setText("Grounded: " + grounded +
+        GameScreen.statsLabel.setText("Movement Mode: " + movementMode +
+                "\nGrounded: " + grounded +
                 "\nFalling: " + falling +
                 "\nHit Head: " + hitHead +
                 "\nTouched Ground Fixtures: " + touchedGroundFixtures.size +
@@ -128,12 +134,11 @@ public class Player extends Entity {
     
     private void applyMovement(float delta) {
         if (grounded && canWalkOnSlope && !falling) {
-//            System.out.println("slope");
+            movementMode = WALKING;
             gravityY = 0;
             
             if (touchedGroundFixtures.size == 0) {
                 setMotion(slopeStickForce, contactAngle + 180);
-                System.out.println("hit1");
             }
             else setSpeed(0);
             
@@ -150,7 +155,7 @@ public class Player extends Entity {
             
             addMotion(lateralSpeed, contactAngle - 90f);
         } else if (grounded && !canWalkOnSlope && canSlideOnSlope && !falling) {
-//            System.out.println("sliding");
+            movementMode = SLIDING;
             gravityY = 0;
     
             temp1.set(x, y);
@@ -158,11 +163,9 @@ public class Player extends Entity {
             temp2.set(m2p(temp2.x), m2p(temp2.y));
             groundShape.getVertex2(temp3);
             temp3.set(m2p(temp3.x), m2p(temp3.y));
-            var closest = Utils.closestPointInLine(temp1, temp2, temp3);
     
             if (touchedGroundFixtures.size == 0) {
                 setMotion(slopeStickForce, contactAngle + 180);
-                System.out.println("hit2");
             }
             else setSpeed(0);
             
@@ -175,7 +178,7 @@ public class Player extends Entity {
             
             addMotion(lateralSpeed, contactAngle - 90f);
         } else {
-//            System.out.println("air");
+            movementMode = FALLING;
             gravityY = -playerGravity;
             if (isAnyBindingPressed(Binding.RIGHT, Binding.LEFT)) {
                 deltaX = Utils.approach(deltaX, isBindingPressed(Binding.RIGHT) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
@@ -267,7 +270,7 @@ public class Player extends Entity {
                 
                 if (!Utils.isEqual360(normalAngle, 90, maxSlideAngle)) {
                     touchingWall = true;
-                    wallAngle = fixtureAngle;
+                    wallAngle = normalAngle;
                 }
             }
         }
