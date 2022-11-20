@@ -31,7 +31,6 @@ public class Bounds extends Entity {
         Fixture previousFixture = null;
         Fixture firstFixture = null;
         for (int i = 0; i + 1 < points.length; i += 2) {
-            System.out.println("new fixture");
             EdgeShape edgeShape = new EdgeShape();
     
             float nextX, nextY;

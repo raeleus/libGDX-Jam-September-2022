@@ -2,10 +2,8 @@ package com.ray3k.template.entities;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
-import com.badlogic.gdx.physics.box2d.Contact;
-import com.badlogic.gdx.physics.box2d.EdgeShape;
-import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.ray3k.template.*;
@@ -271,7 +269,8 @@ public class Player extends Entity {
     @Override
     public void preSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (other instanceof Bounds) {
-            float normalAngle = contact.getWorldManifold().getNormal().angleDeg();
+            var manifold = contact.getWorldManifold();
+            float normalAngle = manifold.getNormal().angleDeg();
             float fixtureAngle = ((BoundsData) otherFixture.getUserData()).angle;
             
             if (fixture == footFixture) {
@@ -288,18 +287,26 @@ public class Player extends Entity {
                 }
     
                 if (Utils.isEqual360(normalAngle, 90, maxSlideAngle)) {
-                    contact.setFriction(1f);
+                    contact.setFriction(0f);
                 } else {
                     contact.setFriction(0f);
                     touchingWall = true;
                     wallAngle = fixtureAngle;
                 }
             } else if (fixture == bodyFixture) {
+//                for (int i = 0; i < manifold.getNumberOfContactPoints(); i++) {
+//                    System.out.println(manifold.getPoints()[i]);
+//                    ((PolygonShape)bodyFixture.getShape()).
+//                }
                 if (Utils.isEqual360(fixtureAngle, 270, maxCeilingAngle) && Utils.isEqual360(normalAngle, 270, maxCeilingAngle)) {
+                    System.out.println("hit head");
                     contact.setEnabled(true);
                     if (Utils.isEqual360(fixtureAngle, 270, maxCeilingHitAngle) && Utils.isEqual360(normalAngle, 270, maxCeilingHitAngle)) {
                         hitHead = true;
                     }
+                } else if (!Utils.isEqual360(fixtureAngle, 90, maxSlideAngle) && Utils.isEqual360(contactAngle, fixtureAngle, 90) && (rightSensorBlocks.contains(otherFixture, true) || leftSensorBlocks.contains(otherFixture, true))) {
+                    System.out.println("hit wall " + fixtureAngle + " " + contactAngle);
+                    contact.setEnabled(true);
                 } else {
                     contact.setEnabled(false);
                 }
