@@ -1,11 +1,9 @@
 package com.ray3k.template.entities;
 
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
-import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.ray3k.template.*;
 import com.ray3k.template.entities.Bounds.*;
@@ -17,38 +15,53 @@ import static com.ray3k.template.Resources.Values.*;
 import static com.ray3k.template.entities.Player.MovementMode.*;
 
 public class Player extends Entity {
-    private Fixture bodyFixture;
-    private Fixture footFixture;
-    private final static Vector2 temp = new Vector2();
-    private boolean grounded;
-    private final float footRadius = 25;
-    private final float footOffsetX = 0;
-    private final float footOffsetY = 25;
-    private float footRayOffsetX;
-    private float footRayOffsetY;
-    private final float bodyHeight = 100;
-    private final float maxSlopeAngle = 50;
-    private final float maxSlideAngle = 80;
-    private final float maxCeilingAngle = 85;
-    private final float footRayDistance = 90;
-    private final float slopeStickForce = 100;
-    private boolean canWalkOnSlope;
-    private boolean canSlideOnSlope;
-    private boolean canJump;
-    private boolean falling;
-    private EdgeShape groundShape;
-    private float contactAngle;
-    private float groundAngle;
-    private float lateralSpeed;
-    private ObjectSet<Fixture> touchedGroundFixtures = new ObjectSet<>();
-    private ObjectSet<Fixture> lastTouchedGroundFixtures = new ObjectSet<>();
-    private boolean touchingWall;
-    private float wallAngle;
-    private boolean hitHead;
-    private boolean clearLastTouchedGroundFixtures;
-    private MovementMode movementMode;
     public enum MovementMode {
         WALKING, SLIDING, FALLING
+    }
+    private final static Vector2 temp = new Vector2();
+    
+    public final float footRadius;
+    public final float footOffsetX;
+    public final float footOffsetY;
+    public final float footRayOffsetX;
+    public final float footRayOffsetY;
+    public final float torsoHeight;
+    
+    public float maxSlopeAngle = 50;
+    public float maxSlideAngle = 80;
+    public float maxCeilingAngle = 85;
+    public float footRayDistance = 90;
+    public float slopeStickForce = 100;
+    
+    private Fixture torsoFixture;
+    private Fixture footFixture;
+    
+    public boolean grounded;
+    public boolean falling;
+    public boolean canWalkOnSlope;
+    public boolean canSlideOnSlope;
+    public boolean canJump;
+    private boolean touchingWall;
+    private boolean hitHead;
+    public float lateralSpeed;
+    public MovementMode movementMode;
+    
+    private float contactAngle;
+    private float groundAngle;
+    private float wallAngle;
+    private ObjectSet<Fixture> touchedGroundFixtures = new ObjectSet<>();
+    private ObjectSet<Fixture> lastTouchedGroundFixtures = new ObjectSet<>();
+    private boolean clearLastTouchedGroundFixtures;
+    
+    public Player(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
+        this.footOffsetX = footOffsetX;
+        this.footOffsetY = footOffsetY;
+        this.footRadius = footRadius;
+    
+        footRayOffsetX = footOffsetX;
+        footRayOffsetY = footOffsetY - footRadius;
+        
+        this.torsoHeight = torsoHeight;
     }
     
     @Override
@@ -61,13 +74,10 @@ public class Player extends Entity {
         footFixture.getFilterData().categoryBits = CATEGORY_ENTITY;
         footFixture.getFilterData().maskBits = CATEGORY_BOUNDS;
         
-        footRayOffsetX = footOffsetX;
-        footRayOffsetY = footOffsetY - footRadius;
-        
-        bodyFixture = setCollisionBox(-footRadius + footOffsetX, footOffsetY, footRadius * 2, bodyHeight, BodyType.DynamicBody);
+        torsoFixture = setCollisionBox(-footRadius + footOffsetX, footOffsetY, footRadius * 2, torsoHeight, BodyType.DynamicBody);
 //        bodyFixture = setCollisionBox(slotBbox, BodyType.DynamicBody);
-        bodyFixture.getFilterData().categoryBits = CATEGORY_ENTITY;
-        bodyFixture.getFilterData().maskBits = CATEGORY_BOUNDS;
+        torsoFixture.getFilterData().categoryBits = CATEGORY_ENTITY;
+        torsoFixture.getFilterData().maskBits = CATEGORY_BOUNDS;
         
         animationState.setAnimation(0, animationBlink, true);
         animationState.setAnimation(1, animationTail, true);
@@ -94,7 +104,6 @@ public class Player extends Entity {
                 if (fixture.getBody().getUserData() instanceof Bounds) {
                     var data = (BoundsData) fixture.getUserData();
                     if (lastTouchedGroundFixtures.contains(data.previousFixture) || lastTouchedGroundFixtures.contains(data.nextFixture) || lastTouchedGroundFixtures.contains(fixture)) {
-                        groundShape = (EdgeShape) fixture.getShape();
                         contactAngle = normal.angleDeg();
                         groundAngle = ((BoundsData)fixture.getUserData()).angle;
                         grounded = true;
@@ -157,12 +166,6 @@ public class Player extends Entity {
         } else if (grounded && !canWalkOnSlope && canSlideOnSlope && !falling) {
             movementMode = SLIDING;
             gravityY = 0;
-    
-            temp1.set(x, y);
-            groundShape.getVertex1(temp2);
-            temp2.set(m2p(temp2.x), m2p(temp2.y));
-            groundShape.getVertex2(temp3);
-            temp3.set(m2p(temp3.x), m2p(temp3.y));
     
             if (touchedGroundFixtures.size == 0) {
                 setMotion(slopeStickForce, contactAngle + 180);
@@ -249,7 +252,6 @@ public class Player extends Entity {
             float fixtureAngle = ((BoundsData) otherFixture.getUserData()).angle;
             
             if (fixture == footFixture) {
-                groundShape = null;
                 canWalkOnSlope = false;
                 canSlideOnSlope = false;
     
@@ -261,7 +263,7 @@ public class Player extends Entity {
                 }
     
                 contact.setFriction(0f);
-            } else if (fixture == bodyFixture) {
+            } else if (fixture == torsoFixture) {
                 contact.setFriction(0f);
     
                 if (Utils.isEqual360(normalAngle, 270, maxCeilingAngle)) {
@@ -292,7 +294,6 @@ public class Player extends Entity {
             if (Utils.isEqual360(angle, 90, maxSlideAngle)) contactAngle = angle;
             
             if (!canSlideOnSlope || !canWalkOnSlope) {
-                groundShape = (EdgeShape) otherFixture.getShape();
                 groundAngle = ((BoundsData) otherFixture.getUserData()).angle;
                 slopeCheck();
             }
