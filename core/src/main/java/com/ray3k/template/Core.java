@@ -43,7 +43,7 @@ import java.util.Objects;
 import static com.ray3k.template.Resources.*;
 
 public class Core extends JamGame {
-    public static final String PROJECT_NAME = "Player's Island";
+    public static final String PROJECT_NAME = "SlopeCharacter's Island";
     public final static IntArray keysJustPressed = new IntArray();
     public final static IntArray buttonsJustPressed = new IntArray();
     public final static IntArray buttonsPressed = new IntArray();

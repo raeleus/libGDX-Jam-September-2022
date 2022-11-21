@@ -191,7 +191,7 @@ public class GameScreen extends JamScreen {
             
             switch (name) {
                 case "player":
-                    var player = new Player(0, 25, 25, 100);
+                    var player = new Player();
                     entityController.add(player);
                     player.teleport(x, y);
                     break;
