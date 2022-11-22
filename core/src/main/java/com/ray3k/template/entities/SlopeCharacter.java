@@ -2,8 +2,9 @@ package com.ray3k.template.entities;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
+import com.badlogic.gdx.physics.box2d.Contact;
+import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.ray3k.template.*;
 import com.ray3k.template.entities.Bounds.*;
@@ -52,7 +53,7 @@ public abstract class SlopeCharacter extends Entity {
     /**
      * The angle tolerance for slidable slopes. 0 would only allow sliding on completely flat surfaces. 90 would allow sliding on all slopes. Must be larger than maxWalkAngle.
      */
-    public float maxSlideAngle = 80;
+    public float maxSlideAngle = 75;
     /**
      * The angle tolerance for ceiling collisions. The angle of the normal necessary to move the character out of the collision is compared to 270. 0 would only allow for head collisions that are directly up
      */
@@ -65,6 +66,24 @@ public abstract class SlopeCharacter extends Entity {
      * The velocity used to correct the position of the character above the ground when it's floating above a slope. This usually only occurs when going down hill.
      */
     public float slopeStickForce = 100;
+    public float coyoteTime = .2f;
+    public float jumpReleaseDampening = .3f;
+    public float jumpTriggerDelay = .2f;
+    
+    public float lateralMaxSpeed = 800;
+    public float lateralAcceleration = 2500;
+    public float lateralDeceleration = 3500;
+    public float lateralStopMinDeceleration = 1000;
+    public float lateralStopDeceleration = 4000;
+    
+    public float lateralSlideMaxSpeed = 1000;
+    public float lateralSlideAcceleration = 4000;
+    
+    public float lateralAirMaxSpeed = 800;
+    public float lateralAirAcceleration = 2500;
+    public float lateralAirDeceleration = 2500;
+    public float lateralAirStopMinDeceleration = 400;
+    public float lateralAirStopDeceleration = 500;
     
     /**
      * Set to true to allow the character to jump while sliding.
@@ -85,13 +104,17 @@ public abstract class SlopeCharacter extends Entity {
     public Fixture footFixture;
     
     /**
-     * true if the character is touching the ground
+     * true if the character is touching the ground.
      */
     public boolean grounded;
     /**
-     * true if the character is in the air
+     * true if the character is in the air.
      */
     public boolean falling;
+    /**
+     * true if the character initiated a jump.
+     */
+    public boolean jumping;
     /**
      * true if the ground the character is on can be walked on. 90 is completely flat ground.
      */
@@ -105,19 +128,19 @@ public abstract class SlopeCharacter extends Entity {
      */
     public boolean canJump;
     /**
-     * true if touching a wall
+     * true if touching a wall.
      */
     private boolean touchingWall;
     /**
-     * true if hitting a ceiling
+     * true if hitting a ceiling.
      */
     private boolean hitHead;
     /**
-     * The speed that the character moves across the ground. Movement is parallel to the ground slop.
+     * The speed that the character moves across the ground. Movement is parallel to the ground slope.
      */
     public float lateralSpeed;
     /**
-     * The movement mode of the character: walking, sliding, or
+     * The movement mode of the character: walking, sliding, or falling.
      */
     public MovementMode movementMode;
     
@@ -131,6 +154,8 @@ public abstract class SlopeCharacter extends Entity {
     private boolean inputLeft;
     private boolean inputRight;
     private boolean inputJump;
+    private float inputJumpJustPressed;
+    private float coyoteTimer;
     
     public SlopeCharacter(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
         this.footOffsetX = footOffsetX;
@@ -187,15 +212,21 @@ public abstract class SlopeCharacter extends Entity {
                 return 1;
             }, p2m(x + footRayOffsetX), p2m(y + footRayOffsetY), p2m(x + footRayOffsetX), p2m(y + footRayOffsetY - footRayDistance));
 
-            if (!grounded) falling = true;
-
-            slopeCheck();
+            if (!grounded) {
+                falling = true;
+                coyoteTimer = coyoteTime;
+            }
         }
+        slopeCheck();
         
         inputLeft = false;
         inputRight = false;
+        var lastInputJump = inputJump;
         inputJump = false;
+        inputJumpJustPressed -= delta;
+        coyoteTimer -= delta;
         handleControls();
+        if (inputJump && !lastInputJump) inputJumpJustPressed = jumpTriggerDelay;
         
         applyMovement(delta);
     
@@ -207,6 +238,8 @@ public abstract class SlopeCharacter extends Entity {
                 "\nLateral Speed: " + lateralSpeed +
                 "\nGround Angle: " + groundAngle +
                 "\nTouching Wall: " + touchingWall +
+                "\nCoyote Timer: " + coyoteTimer +
+                "\nCan Jump: " + canJump +
                 "\ndeltaX: " + deltaX);
     }
     
@@ -214,8 +247,8 @@ public abstract class SlopeCharacter extends Entity {
         canWalkOnSlope = Utils.isEqual360(groundAngle, 90, maxWalkAngle);
         canSlideOnSlope = !canWalkOnSlope && Utils.isEqual360(groundAngle, 90, maxSlideAngle);
         
-        if (allowJumpingWhileSliding) canJump = grounded && !falling;
-        else canJump = grounded && !falling && canWalkOnSlope;
+        if (allowJumpingWhileSliding) canJump = grounded && !falling || coyoteTimer > 0;
+        else canJump = grounded && !falling && canWalkOnSlope || coyoteTimer > 0;
     }
     
     public void moveLeft() {
@@ -245,10 +278,12 @@ public abstract class SlopeCharacter extends Entity {
             }
             else setSpeed(0);
             
-            if (inputLeft || inputRight) {
-                lateralSpeed = Utils.approach(lateralSpeed, inputRight ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
+            if (inputRight || inputLeft) {
+                var goRight = inputRight ? 1f : -1f;
+                var acceleration = Math.signum(lateralSpeed) == goRight ? lateralAcceleration : lateralDeceleration;
+                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, goRight * lateralMaxSpeed, goRight * acceleration * delta, false);
             } else {
-                lateralSpeed = Utils.approach(lateralSpeed, 0, playerWalkDeceleration * delta);
+                lateralSpeed = Utils.throttledDeceleration(lateralSpeed, lateralMaxSpeed, lateralStopMinDeceleration * delta, lateralStopDeceleration * delta);
             }
             
             if (touchingWall) {
@@ -265,8 +300,12 @@ public abstract class SlopeCharacter extends Entity {
                 setMotion(slopeStickForce, contactAngle + 180);
             }
             else setSpeed(0);
-            
-            lateralSpeed = Utils.approach(lateralSpeed, Utils.isEqual360(contactAngle, 0, 90) ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
+    
+            if (Utils.isEqual360(contactAngle, 0, 90)) {
+                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, lateralSlideMaxSpeed, lateralSlideAcceleration * delta, false);
+            } else {
+                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, -lateralSlideMaxSpeed, -lateralSlideAcceleration * delta, false);
+            }
     
             if (touchingWall) {
                 if (lateralSpeed > 0 && Utils.isEqual360(wallAngle, 180, 90)) lateralSpeed = 0;
@@ -277,9 +316,15 @@ public abstract class SlopeCharacter extends Entity {
         } else {
             movementMode = FALLING;
             gravityY = -playerGravity;
-            if (inputLeft || inputRight) {
-                deltaX = Utils.approach(deltaX, inputRight ? playerMaxWalkSpeed : -playerMaxWalkSpeed, playerWalkAcceleration * delta);
-            } else deltaX = Utils.approach(deltaX, 0, playerWalkDeceleration * delta);
+    
+            if (inputRight || inputLeft) {
+                var goRight = inputRight ? 1f : -1f;
+                var acceleration = Math.signum(deltaX) == goRight ? lateralAirAcceleration : lateralAirDeceleration;
+                deltaX = Utils.throttledAcceleration(deltaX, goRight * lateralAirMaxSpeed, goRight * acceleration * delta, false);
+            } else {
+                deltaX = Utils.throttledDeceleration(deltaX, lateralAirMaxSpeed, lateralAirStopMinDeceleration * delta, lateralAirStopDeceleration * delta);
+            }
+            lateralSpeed = deltaX;
     
             if (touchingWall) {
                 if (deltaX > 0 && Utils.isEqual360(wallAngle, 180, 90)) deltaX = 0;
@@ -289,12 +334,21 @@ public abstract class SlopeCharacter extends Entity {
             if (hitHead) {
                 if (deltaY > 0) deltaY = 0;
             }
+            
+            if (jumping && deltaY > 0 && !inputJump) {
+                jumping = false;
+                deltaY *= jumpReleaseDampening;
+            }
         }
         
         if (canJump) {
-            if (inputJump) {
+            if (inputJumpJustPressed > 0) {
+                jumping = true;
                 falling = true;
                 canJump = false;
+                coyoteTimer = 0;
+                inputJumpJustPressed = 0;
+                if (inputLeft || inputRight) deltaX = lateralSpeed;
                 deltaY = playerJumpSpeed;
             }
         }
@@ -355,7 +409,7 @@ public abstract class SlopeCharacter extends Entity {
                 if (Utils.isEqual360(fixtureAngle, 90, maxSlideAngle) && deltaY < 0) {
                     if (falling) {
                         falling = false;
-                        lateralSpeed = deltaX;
+                        jumping = false;
                     }
                 }
     

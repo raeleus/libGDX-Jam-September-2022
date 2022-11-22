@@ -1,6 +1,7 @@
 package com.ray3k.template.entities;
 
 import com.ray3k.template.*;
+import com.ray3k.template.Resources.*;
 
 import static com.ray3k.template.Core.*;
 import static com.ray3k.template.Resources.SpineZebra.*;
@@ -19,6 +20,6 @@ public class Player extends SlopeCharacter {
         if (Core.isBindingPressed(Binding.LEFT)) moveLeft();
         else if (Core.isBindingPressed(Binding.RIGHT)) moveRight();
         
-        if (Core.isBindingJustPressed(Binding.JUMP)) moveJump();
+        if (Core.isBindingPressed(Binding.JUMP)) moveJump();
     }
 }

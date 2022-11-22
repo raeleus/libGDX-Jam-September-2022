@@ -483,4 +483,19 @@ public class Utils {
     private static float mod(float a, float n) {
         return (a % n + n) % n;
     }
+    
+    public static float throttledAcceleration(float speed, float maxSpeed, float acceleration, boolean allowSlowDown) {
+        acceleration *= (1 - speed / maxSpeed);
+        if (!allowSlowDown && Math.signum(acceleration) != Math.signum(maxSpeed)) {
+            acceleration = 0;
+        }
+        return speed + acceleration;
+    }
+    
+    public static float throttledDeceleration(float speed, float maxSpeed, float minDeceleration, float deceleration) {
+        deceleration *= (1 - Math.abs(speed) / maxSpeed);
+        if (deceleration < minDeceleration) deceleration = minDeceleration;
+        System.out.println("deceleration = " + deceleration);
+        return Utils.approach(speed, 0, deceleration);
+    }
 }
