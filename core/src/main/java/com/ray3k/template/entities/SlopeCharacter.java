@@ -12,7 +12,6 @@ import com.ray3k.template.screens.*;
 
 import static com.ray3k.template.Core.*;
 import static com.ray3k.template.Resources.SpineZebra.*;
-import static com.ray3k.template.Resources.Values.*;
 import static com.ray3k.template.entities.SlopeCharacter.MovementMode.*;
 
 public abstract class SlopeCharacter extends Entity {
@@ -66,24 +65,96 @@ public abstract class SlopeCharacter extends Entity {
      * The velocity used to correct the position of the character above the ground when it's floating above a slope. This usually only occurs when going down hill.
      */
     public float slopeStickForce = 100;
+    /**
+     * The additional time the character is allowed to jump after falling off a ledge
+     */
     public float coyoteTime = .2f;
+    /**
+     * The multiplier applied to deltaY when the character releases the jump input while deltaY is still positive.
+     * This affects how floaty a short jump is. Values 0-1.
+     */
     public float jumpReleaseDampening = .3f;
+    /**
+     * How much leading time the character has to press the jump input before landing to initiate a jump.
+     */
     public float jumpTriggerDelay = .2f;
     
+    /**
+     * If true, the character is allowed to maintain additional momentum if they are holding the input in that direction.
+     */
+    public boolean maintainExtraLateralMomentum = false;
+    /**
+     * The maximum speed that the character is allowed to walk.
+     */
     public float lateralMaxSpeed = 800;
+    /**
+     * The maximum acceleration that the character has while walking. The actual acceleration is diminished on a curve
+     * as the character approaches lateralMaxSpeed.
+     */
     public float lateralAcceleration = 2500;
+    /**
+     * The maximum deceleration that the character has while walking. This is implemented when the character presses
+     * input in the opposite direction of which they are moving. This value is on a curve and actual acceleration may be higher.
+     */
     public float lateralDeceleration = 3500;
+    /**
+     * The minimum deceleration that the character has when they stop walking. This is implemented when there is no left
+     * or right input. This is used when the character is close to lateralMaxSpeed.
+     */
     public float lateralStopMinDeceleration = 1000;
+    /**
+     * The maximum deceleration that the character has when they stop walking. This is implemented when there is no left
+     * or right input. The actual deceleration is on a curve where maximum deceleration is experienced when closer to 0.
+     */
     public float lateralStopDeceleration = 4000;
     
+    /**
+     * The maximum speed that the character has when sliding down a slope.
+     */
     public float lateralSlideMaxSpeed = 1000;
+    /**
+     * The maximum accleration that the character has while sliding. The actual acceleration is diminished on a curve
+     * as the character approaches lateralMaxSpeed.
+     */
     public float lateralSlideAcceleration = 4000;
     
+    /**
+     * The maximum speed for left and right movement that the character is allowed to move in the air.
+     */
     public float lateralAirMaxSpeed = 800;
+    /**
+     * The maximum acceleration for left and right movement that the character has while in the air. The actual acceleration is diminished on a curve
+     * as the character approaches lateralMaxSpeed.
+     */
     public float lateralAirAcceleration = 2500;
+    /**
+     * The maximum deceleration for left and right movement that the character has while in the air. This is implemented when the character presses
+     * input in the opposite direction of which they are moving. This value is on a curve and actual acceleration may be higher.
+     */
     public float lateralAirDeceleration = 2500;
+    /**
+     * The minimum deceleration for left and right movement that the character has when they stop moving in the air. This is implemented when there is no left
+     * or right input. This is used when the character is close to lateralAirMaxSpeed.
+     */
     public float lateralAirStopMinDeceleration = 400;
+    /**
+     * The maximum deceleration for left and right movement that the character has when they stop moving in the air. This is implemented when there is no left
+     * or right input. The actual deceleration is on a curve where maximum deceleration is experienced when closer to 0.
+     */
     public float lateralAirStopDeceleration = 500;
+    
+    /**
+     * The gravity applied to the character while the character is in the air.
+     */
+    public float gravity = -3000;
+    /**
+     * The initial velocity of upwards movement when the character presses the jump input.
+     */
+    public float jumpSpeed = 1500;
+    /**
+     * The maximum downward velocity when the character is in the air.
+     */
+    public float terminalVelocity = 3000;
     
     /**
      * Set to true to allow the character to jump while sliding.
@@ -144,17 +215,51 @@ public abstract class SlopeCharacter extends Entity {
      */
     public MovementMode movementMode;
     
+    /**
+     * The angle of the collision normal when contacting the ground. 90 is collision with completely flat ground.
+     * ContactAngle may vary compared to groundAngle depending on if the collision was with a vertex.
+     */
     private float contactAngle;
+    /**
+     * The angle of the ground that the character last touched. 90 is completely flat ground.
+     */
     private float groundAngle;
+    /**
+     * The angle of the last touched wall.
+     */
     private float wallAngle;
+    /**
+     * The ground fixtures that were touched in this frame.
+     */
     private ObjectSet<Fixture> touchedGroundFixtures = new ObjectSet<>();
+    /**
+     * The ground fixtures that were touched in the last frame.
+     */
     private ObjectSet<Fixture> lastTouchedGroundFixtures = new ObjectSet<>();
+    /**
+     * Clears the lastTouchedGroundFixtures when there is a new frame and a new ground contact has been made.
+     */
     private boolean clearLastTouchedGroundFixtures;
     
+    /**
+     * Character called moveLeft() for this frame.
+     */
     private boolean inputLeft;
+    /**
+     * Character called moveRight() for this frame.
+     */
     private boolean inputRight;
+    /**
+     * Character called moveJump() for this frame.
+     */
     private boolean inputJump;
+    /**
+     * Character called moveJump() for this frame when inputJump was false last frame.
+     */
     private float inputJumpJustPressed;
+    /**
+     * Counts down continuously and is reset when the player begins to fall. Used to compare against coyoteTime.
+     */
     private float coyoteTimer;
     
     public SlopeCharacter(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
@@ -182,7 +287,7 @@ public abstract class SlopeCharacter extends Entity {
         animationState.setAnimation(1, animationTail, true);
         animationState.setAnimation(2, animationJumpFall, true);
         
-        gravityY = -playerGravity;
+        gravityY = gravity;
     }
     
     @Override
@@ -264,7 +369,7 @@ public abstract class SlopeCharacter extends Entity {
     }
     
     /**
-     * This method must be overridden to handle player controls before movement is applied to the character.
+     * This method must be overridden to handle chracter controls before movement is applied to the character.
      */
     public abstract void handleControls();
     
@@ -281,7 +386,7 @@ public abstract class SlopeCharacter extends Entity {
             if (inputRight || inputLeft) {
                 var goRight = inputRight ? 1f : -1f;
                 var acceleration = Math.signum(lateralSpeed) == goRight ? lateralAcceleration : lateralDeceleration;
-                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, goRight * lateralMaxSpeed, goRight * acceleration * delta, false);
+                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, goRight * lateralMaxSpeed, goRight * acceleration * delta, maintainExtraLateralMomentum);
             } else {
                 lateralSpeed = Utils.throttledDeceleration(lateralSpeed, lateralMaxSpeed, lateralStopMinDeceleration * delta, lateralStopDeceleration * delta);
             }
@@ -302,9 +407,9 @@ public abstract class SlopeCharacter extends Entity {
             else setSpeed(0);
     
             if (Utils.isEqual360(contactAngle, 0, 90)) {
-                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, lateralSlideMaxSpeed, lateralSlideAcceleration * delta, false);
+                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, lateralSlideMaxSpeed, lateralSlideAcceleration * delta, maintainExtraLateralMomentum);
             } else {
-                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, -lateralSlideMaxSpeed, -lateralSlideAcceleration * delta, false);
+                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, -lateralSlideMaxSpeed, -lateralSlideAcceleration * delta, maintainExtraLateralMomentum);
             }
     
             if (touchingWall) {
@@ -315,12 +420,12 @@ public abstract class SlopeCharacter extends Entity {
             addMotion(lateralSpeed, contactAngle - 90f);
         } else {
             movementMode = FALLING;
-            gravityY = -playerGravity;
+            gravityY = gravity;
     
             if (inputRight || inputLeft) {
                 var goRight = inputRight ? 1f : -1f;
                 var acceleration = Math.signum(deltaX) == goRight ? lateralAirAcceleration : lateralAirDeceleration;
-                deltaX = Utils.throttledAcceleration(deltaX, goRight * lateralAirMaxSpeed, goRight * acceleration * delta, false);
+                deltaX = Utils.throttledAcceleration(deltaX, goRight * lateralAirMaxSpeed, goRight * acceleration * delta, maintainExtraLateralMomentum);
             } else {
                 deltaX = Utils.throttledDeceleration(deltaX, lateralAirMaxSpeed, lateralAirStopMinDeceleration * delta, lateralAirStopDeceleration * delta);
             }
@@ -339,6 +444,9 @@ public abstract class SlopeCharacter extends Entity {
                 jumping = false;
                 deltaY *= jumpReleaseDampening;
             }
+            
+            var term = Math.abs(terminalVelocity);
+            if (deltaY < -term) deltaY = -term;
         }
         
         if (canJump) {
@@ -349,7 +457,7 @@ public abstract class SlopeCharacter extends Entity {
                 coyoteTimer = 0;
                 inputJumpJustPressed = 0;
                 if (inputLeft || inputRight) deltaX = lateralSpeed;
-                deltaY = playerJumpSpeed;
+                deltaY = jumpSpeed;
             }
         }
     }

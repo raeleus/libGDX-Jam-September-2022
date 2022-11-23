@@ -484,9 +484,9 @@ public class Utils {
         return (a % n + n) % n;
     }
     
-    public static float throttledAcceleration(float speed, float maxSpeed, float acceleration, boolean allowSlowDown) {
+    public static float throttledAcceleration(float speed, float maxSpeed, float acceleration, boolean maintainExtraMomentum) {
         acceleration *= (1 - speed / maxSpeed);
-        if (!allowSlowDown && Math.signum(acceleration) != Math.signum(maxSpeed)) {
+        if (maintainExtraMomentum && Math.signum(acceleration) != Math.signum(maxSpeed)) {
             acceleration = 0;
         }
         return speed + acceleration;

@@ -13,6 +13,7 @@ public class Player extends SlopeCharacter {
         depth = DEPTH_PLAYER;
         animationData.setDefaultMix(.25f);
         setSkeletonData(skeletonData, animationData);
+        maintainExtraLateralMomentum = true;
     }
     
     @Override
