@@ -18,7 +18,8 @@ public abstract class SlopeCharacter extends Entity {
     public enum MovementMode {
         WALKING, SLIDING, FALLING
     }
-    private final static Vector2 temp = new Vector2();
+    private final static Vector2 temp1 = new Vector2();
+    private final static Vector2 temp2 = new Vector2();
     
     /**
      * The radius of the circle foot fixture that will contact the ground.
@@ -80,9 +81,13 @@ public abstract class SlopeCharacter extends Entity {
     public float jumpTriggerDelay = .2f;
     
     /**
+     * If true, the character will stick to the ground and slide on slopes as long as the groundAngle is within maxWalkAngle and maxSlideAngle respectively
+     */
+    public boolean stickToGround = true;
+    /**
      * If true, the character is allowed to maintain additional momentum if they are holding the input in that direction.
      */
-    public boolean maintainExtraLateralMomentum = false;
+    public boolean maintainExtraLateralMomentum;
     /**
      * The maximum speed that the character is allowed to walk.
      */
@@ -374,9 +379,13 @@ public abstract class SlopeCharacter extends Entity {
      * @param direction
      */
     public void applyGroundForce(float speed, float direction) {
-        temp.set(speed, 0);
-        temp.rotateDeg(direction);
-        lateralSpeed += temp.x;
+        temp1.set(speed, 0);
+        temp1.rotateDeg(direction);
+        temp2.set(lateralSpeed, 0);
+        temp2.rotateDeg(groundAngle - 90);
+        temp1.add(temp2);
+        temp1.rotateDeg(-(groundAngle - 90));
+        lateralSpeed = temp1.x;
     }
     
     /**
@@ -400,7 +409,7 @@ public abstract class SlopeCharacter extends Entity {
     public abstract void handleControls();
     
     private void applyMovement(float delta) {
-        if (grounded && canWalkOnSlope && !falling) {
+        if (stickToGround && grounded && canWalkOnSlope && !falling) {
             movementMode = WALKING;
             gravityY = 0;
             
@@ -423,7 +432,7 @@ public abstract class SlopeCharacter extends Entity {
             }
             
             addMotion(lateralSpeed, contactAngle - 90f);
-        } else if (grounded && !canWalkOnSlope && canSlideOnSlope && !falling) {
+        } else if (stickToGround && grounded && !canWalkOnSlope && canSlideOnSlope && !falling) {
             movementMode = SLIDING;
             gravityY = 0;
     
@@ -498,15 +507,15 @@ public abstract class SlopeCharacter extends Entity {
     
             shapeDrawer.setColor(Color.RED);
             shapeDrawer.setDefaultLineWidth(5f);
-            temp.set(20, 0);
-            temp.rotateDeg(contactAngle);
-            shapeDrawer.line(x, y, x + temp.x, y + temp.y);
+            temp1.set(20, 0);
+            temp1.rotateDeg(contactAngle);
+            shapeDrawer.line(x, y, x + temp1.x, y + temp1.y);
     
             shapeDrawer.setColor(Color.BLUE);
             shapeDrawer.setDefaultLineWidth(5f);
-            temp.set(20, 0);
-            temp.rotateDeg(groundAngle);
-            shapeDrawer.line(x, y, x + temp.x, y + temp.y);
+            temp1.set(20, 0);
+            temp1.rotateDeg(groundAngle);
+            shapeDrawer.line(x, y, x + temp1.x, y + temp1.y);
         }
     }
     

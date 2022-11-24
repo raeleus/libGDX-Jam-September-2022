@@ -28,7 +28,7 @@ public class Player extends SlopeCharacter {
     public void act(float delta) {
         super.act(delta);
         if (Core.isButtonJustPressed(Buttons.RIGHT)) {
-            applyGroundForce(1500, Utils.pointDirection(x, y, mouseX, mouseY));
+            applyAirForce(1500, Utils.pointDirection(x, y, mouseX, mouseY));
         }
     }
 }
