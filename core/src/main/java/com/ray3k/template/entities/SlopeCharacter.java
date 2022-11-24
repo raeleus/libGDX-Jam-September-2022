@@ -369,6 +369,32 @@ public abstract class SlopeCharacter extends Entity {
     }
     
     /**
+     * Applies a force to the character that will only propel them if they are on the ground. They will not be pushed into the air.
+     * @param speed
+     * @param direction
+     */
+    public void applyGroundForce(float speed, float direction) {
+        temp.set(speed, 0);
+        temp.rotateDeg(direction);
+        lateralSpeed += temp.x;
+    }
+    
+    /**
+     * Applies a force to the character that will propel them along the ground and in the air.
+     * @param speed
+     * @param direction
+     */
+    public void applyAirForce(float speed, float direction) {
+        jumping = false;
+        falling = true;
+        canJump = false;
+        coyoteTimer = 0;
+        inputJumpJustPressed = 0;
+        addMotion(speed, direction);
+        lateralSpeed = deltaX;
+    }
+    
+    /**
      * This method must be overridden to handle chracter controls before movement is applied to the character.
      */
     public abstract void handleControls();

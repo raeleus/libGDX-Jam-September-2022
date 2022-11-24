@@ -220,6 +220,10 @@ public class Utils {
         return vector2.angleDeg();
     }
     
+    public static float pointDirection(Entity entity, Entity other) {
+        return pointDirection(entity.x, entity.y, other.x, other.y);
+    }
+    
     private static final Vector2 temp1 = new Vector2();
     private static final Vector2 temp2 = new Vector2();
     public static float angleToHitMovingTarget(float projectileX, float projectileY, float projectileSpeed, float enemyX, float enemyY, float enemyDeltaX, float enemyDeltaY) {
@@ -495,7 +499,6 @@ public class Utils {
     public static float throttledDeceleration(float speed, float maxSpeed, float minDeceleration, float deceleration) {
         deceleration *= (1 - Math.abs(speed) / maxSpeed);
         if (deceleration < minDeceleration) deceleration = minDeceleration;
-        System.out.println("deceleration = " + deceleration);
         return Utils.approach(speed, 0, deceleration);
     }
 }

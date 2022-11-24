@@ -1,7 +1,7 @@
 package com.ray3k.template.entities;
 
+import com.badlogic.gdx.Input.Buttons;
 import com.ray3k.template.*;
-import com.ray3k.template.Resources.*;
 
 import static com.ray3k.template.Core.*;
 import static com.ray3k.template.Resources.SpineZebra.*;
@@ -22,5 +22,13 @@ public class Player extends SlopeCharacter {
         else if (Core.isBindingPressed(Binding.RIGHT)) moveRight();
         
         if (Core.isBindingPressed(Binding.JUMP)) moveJump();
+    }
+    
+    @Override
+    public void act(float delta) {
+        super.act(delta);
+        if (Core.isButtonJustPressed(Buttons.RIGHT)) {
+            applyGroundForce(1500, Utils.pointDirection(x, y, mouseX, mouseY));
+        }
     }
 }
