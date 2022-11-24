@@ -14,6 +14,7 @@ public class Player extends SlopeCharacter {
         animationData.setDefaultMix(.25f);
         setSkeletonData(skeletonData, animationData);
         maintainExtraLateralMomentum = true;
+        canClingToWalls = true;
     }
     
     @Override
@@ -22,6 +23,10 @@ public class Player extends SlopeCharacter {
         else if (Core.isBindingPressed(Binding.RIGHT)) moveRight();
         
         if (Core.isBindingPressed(Binding.JUMP)) moveJump();
+        if (Core.isBindingPressed(Binding.LEFT)) moveWallClingLeft();
+        if (Core.isBindingPressed(Binding.RIGHT)) moveWallClingRight();
+        if (Core.isBindingPressed(Binding.UP)) moveClimbUp();
+        if (Core.isBindingPressed(Binding.DOWN)) moveClimbDown();
     }
     
     @Override

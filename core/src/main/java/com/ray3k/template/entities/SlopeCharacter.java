@@ -5,6 +5,7 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
 import com.badlogic.gdx.physics.box2d.Contact;
 import com.badlogic.gdx.physics.box2d.Fixture;
+import com.badlogic.gdx.physics.box2d.RayCastCallback;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.ray3k.template.*;
 import com.ray3k.template.entities.Bounds.*;
@@ -16,7 +17,7 @@ import static com.ray3k.template.entities.SlopeCharacter.MovementMode.*;
 
 public abstract class SlopeCharacter extends Entity {
     public enum MovementMode {
-        WALKING, SLIDING, FALLING
+        WALKING, SLIDING, FALLING, WALL_CLINGING
     }
     private final static Vector2 temp1 = new Vector2();
     private final static Vector2 temp2 = new Vector2();
@@ -84,6 +85,9 @@ public abstract class SlopeCharacter extends Entity {
      * If true, the character will stick to the ground and slide on slopes as long as the groundAngle is within maxWalkAngle and maxSlideAngle respectively
      */
     public boolean stickToGround = true;
+    public boolean canClingToWalls;
+    public boolean canClimbWalls;
+    public boolean canWallJump;
     /**
      * If true, the character is allowed to maintain additional momentum if they are holding the input in that direction.
      */
@@ -148,8 +152,15 @@ public abstract class SlopeCharacter extends Entity {
      */
     public float lateralAirStopDeceleration = 500;
     
+    public float wallClimbMinWallCoverage = .5f;
+    public float wallSlideMaxSpeed = 400;
+    public float wallSlideAcceleration = -400;
+    public float wallClimbMaxSpeed = 800;
+    public float wallClimbAcceleration = 800;
+    public float wallRayDistance = 20;
+    
     /**
-     * The gravity applied to the character while the character is in the air.
+     * The signed gravity applied to the character while the character is in the air.
      */
     public float gravity = -3000;
     /**
@@ -207,6 +218,7 @@ public abstract class SlopeCharacter extends Entity {
      * true if touching a wall.
      */
     private boolean touchingWall;
+    private boolean clingingToWall;
     /**
      * true if hitting a ceiling.
      */
@@ -262,6 +274,10 @@ public abstract class SlopeCharacter extends Entity {
      * Character called moveJump() for this frame when inputJump was false last frame.
      */
     private float inputJumpJustPressed;
+    private boolean inputWallClingLeft;
+    private boolean inputWallClingRight;
+    private boolean inputWallClimbUp;
+    private boolean inputWallClimbDown;
     /**
      * Counts down continuously and is reset when the player begins to fall. Used to compare against coyoteTime.
      */
@@ -334,6 +350,11 @@ public abstract class SlopeCharacter extends Entity {
         var lastInputJump = inputJump;
         inputJump = false;
         inputJumpJustPressed -= delta;
+        inputWallClimbDown = false;
+        inputWallClimbUp = false;
+        inputWallClingLeft = false;
+        inputWallClingRight = false;
+        
         coyoteTimer -= delta;
         handleControls();
         if (inputJump && !lastInputJump) inputJumpJustPressed = jumpTriggerDelay;
@@ -356,9 +377,6 @@ public abstract class SlopeCharacter extends Entity {
     private void slopeCheck() {
         canWalkOnSlope = Utils.isEqual360(groundAngle, 90, maxWalkAngle);
         canSlideOnSlope = !canWalkOnSlope && Utils.isEqual360(groundAngle, 90, maxSlideAngle);
-        
-        if (allowJumpingWhileSliding) canJump = grounded && !falling || coyoteTimer > 0;
-        else canJump = grounded && !falling && canWalkOnSlope || coyoteTimer > 0;
     }
     
     public void moveLeft() {
@@ -371,6 +389,22 @@ public abstract class SlopeCharacter extends Entity {
     
     public void moveJump() {
         inputJump = true;
+    }
+    
+    public void moveWallClingLeft() {
+        inputWallClingLeft = true;
+    }
+    
+    public void moveWallClingRight() {
+        inputWallClingRight = true;
+    }
+    
+    public void moveClimbUp() {
+        inputWallClimbUp = true;
+    }
+    
+    public void moveClimbDown() {
+        inputWallClimbDown = true;
     }
     
     /**
@@ -409,6 +443,28 @@ public abstract class SlopeCharacter extends Entity {
     public abstract void handleControls();
     
     private void applyMovement(float delta) {
+        var lastClingingToWall = clingingToWall;
+        boolean wallToRight = Utils.isEqual360(wallAngle, 180, 90);
+        if (!canClingToWalls) clingingToWall = false;
+        else {
+            if (!inputWallClingRight && wallToRight || !inputWallClingLeft && !wallToRight) clingingToWall = false;
+            if (falling && (touchingWall || lastClingingToWall)) {
+                var clingingToRight = wallToRight && inputWallClingRight;
+                var clingingToLeft = !wallToRight && inputWallClingLeft;
+                if (clingingToRight || clingingToLeft) {
+                    clingingToWall = false;
+                    var rayX = p2m(x + footRayOffsetX + (clingingToRight ? footRadius : -footRadius));
+                    var rayY = p2m(y + footRayOffsetY + (torsoHeight + footRadius) / 2);
+                    world.rayCast((fixture, point, normal, fraction) -> {
+                        if (!(fixture.getBody().getUserData() instanceof Bounds)) return -1;
+                        clingingToWall = true;
+                        System.out.println("hit");
+                        return 0;
+                    }, rayX, rayY, rayX + p2m(clingingToRight ? wallRayDistance : -wallRayDistance), rayY);
+                }
+            }
+        }
+        
         if (stickToGround && grounded && canWalkOnSlope && !falling) {
             movementMode = WALKING;
             gravityY = 0;
@@ -453,6 +509,13 @@ public abstract class SlopeCharacter extends Entity {
             }
             
             addMotion(lateralSpeed, contactAngle - 90f);
+        } else if (clingingToWall) {
+            movementMode = WALL_CLINGING;
+            deltaX = 0;
+            if (!lastClingingToWall) deltaY = 0;
+            gravityY = wallSlideAcceleration;
+            var maxSpeed = -Math.abs(wallSlideMaxSpeed);
+            if (deltaY < maxSpeed) deltaY = maxSpeed;
         } else {
             movementMode = FALLING;
             gravityY = gravity;
@@ -483,6 +546,9 @@ public abstract class SlopeCharacter extends Entity {
             var term = Math.abs(terminalVelocity);
             if (deltaY < -term) deltaY = -term;
         }
+    
+        if (allowJumpingWhileSliding) canJump = grounded && !falling || coyoteTimer > 0;
+        else canJump = grounded && !falling && canWalkOnSlope || coyoteTimer > 0;
         
         if (canJump) {
             if (inputJumpJustPressed > 0) {
@@ -504,6 +570,12 @@ public abstract class SlopeCharacter extends Entity {
             shapeDrawer.setDefaultLineWidth(5f);
             shapeDrawer.line(x + footRayOffsetX, y + footRayOffsetY, x + footOffsetX,
                     y + footOffsetY - footRayDistance);
+    
+            var rayX = x + footRayOffsetX + footRadius;
+            var rayY = y + footRayOffsetY + (torsoHeight + footRadius) / 2;
+            shapeDrawer.line(rayX, rayY, rayX + wallRayDistance, rayY);
+            rayX = x + footRayOffsetX - footRadius;
+            shapeDrawer.line(rayX, rayY, rayX - wallRayDistance, rayY);
     
             shapeDrawer.setColor(Color.RED);
             shapeDrawer.setDefaultLineWidth(5f);
