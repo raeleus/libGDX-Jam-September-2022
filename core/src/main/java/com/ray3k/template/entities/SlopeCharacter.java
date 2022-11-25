@@ -152,12 +152,15 @@ public abstract class SlopeCharacter extends Entity {
      */
     public float lateralAirStopDeceleration = 500;
     
-    public float wallClimbMinWallCoverage = .5f;
     public float wallSlideMaxSpeed = 400;
     public float wallSlideAcceleration = -400;
     public float wallClimbMaxSpeed = 800;
-    public float wallClimbAcceleration = 800;
+    public float wallClimbAcceleration = 5000;
     public float wallRayDistance = 20;
+    public float wallClimbRayYoffset;
+    public float wallClimbLedgeJumpSpeed = 800;
+    public float wallJumpAngle = 60;
+    public float wallJumpSpeed = 1200;
     
     /**
      * The signed gravity applied to the character while the character is in the air.
@@ -292,6 +295,7 @@ public abstract class SlopeCharacter extends Entity {
         footRayOffsetY = footOffsetY - footRadius;
         
         this.torsoHeight = torsoHeight;
+        this.wallClimbRayYoffset = (torsoHeight + footRadius) / 2;
     }
     
     @Override
@@ -445,7 +449,7 @@ public abstract class SlopeCharacter extends Entity {
     private void applyMovement(float delta) {
         var lastClingingToWall = clingingToWall;
         boolean wallToRight = Utils.isEqual360(wallAngle, 180, 90);
-        if (!canClingToWalls) clingingToWall = false;
+        if (!canClingToWalls || coyoteTimer > -.3f) clingingToWall = false;
         else {
             if (!inputWallClingRight && wallToRight || !inputWallClingLeft && !wallToRight) clingingToWall = false;
             if (falling && (touchingWall || lastClingingToWall)) {
@@ -454,11 +458,10 @@ public abstract class SlopeCharacter extends Entity {
                 if (clingingToRight || clingingToLeft) {
                     clingingToWall = false;
                     var rayX = p2m(x + footRayOffsetX + (clingingToRight ? footRadius : -footRadius));
-                    var rayY = p2m(y + footRayOffsetY + (torsoHeight + footRadius) / 2);
+                    var rayY = p2m(y + footRayOffsetY + wallClimbRayYoffset);
                     world.rayCast((fixture, point, normal, fraction) -> {
                         if (!(fixture.getBody().getUserData() instanceof Bounds)) return -1;
                         clingingToWall = true;
-                        System.out.println("hit");
                         return 0;
                     }, rayX, rayY, rayX + p2m(clingingToRight ? wallRayDistance : -wallRayDistance), rayY);
                 }
@@ -513,9 +516,16 @@ public abstract class SlopeCharacter extends Entity {
             movementMode = WALL_CLINGING;
             deltaX = 0;
             if (!lastClingingToWall) deltaY = 0;
-            gravityY = wallSlideAcceleration;
-            var maxSpeed = -Math.abs(wallSlideMaxSpeed);
-            if (deltaY < maxSpeed) deltaY = maxSpeed;
+            if (canClimbWalls && (inputWallClimbUp || inputWallClimbDown)) {
+                var goUp = inputWallClimbUp ? 1f : -1f;
+                deltaY = Utils.throttledAcceleration(deltaY, goUp * wallClimbMaxSpeed, goUp * wallClimbAcceleration * delta, false);
+                gravityY = 0;
+            } else {
+                gravityY = wallSlideAcceleration;
+                var maxSpeed = -Math.abs(wallSlideMaxSpeed);
+                if (deltaY > 0) deltaY = Utils.approach(deltaY, 0, wallClimbAcceleration * delta);
+                if (deltaY < maxSpeed) deltaY = maxSpeed;
+            }
         } else {
             movementMode = FALLING;
             gravityY = gravity;
@@ -561,6 +571,22 @@ public abstract class SlopeCharacter extends Entity {
                 deltaY = jumpSpeed;
             }
         }
+        
+        if (lastClingingToWall && !clingingToWall && inputWallClimbUp) {
+            jumping = false;
+            falling = true;
+            canJump = false;
+            coyoteTimer = 0;
+            deltaY = wallClimbLedgeJumpSpeed;
+        }
+        
+        if (canWallJump && clingingToWall && inputJump) {
+            jumping = true;
+            falling = true;
+            canJump = false;
+            coyoteTimer = 0;
+            setMotion(wallJumpSpeed, wallToRight ? wallJumpAngle + 90 : wallJumpAngle);
+        }
     }
     
     @Override
@@ -572,7 +598,7 @@ public abstract class SlopeCharacter extends Entity {
                     y + footOffsetY - footRayDistance);
     
             var rayX = x + footRayOffsetX + footRadius;
-            var rayY = y + footRayOffsetY + (torsoHeight + footRadius) / 2;
+            var rayY = y + footRayOffsetY + wallClimbRayYoffset;
             shapeDrawer.line(rayX, rayY, rayX + wallRayDistance, rayY);
             rayX = x + footRayOffsetX - footRadius;
             shapeDrawer.line(rayX, rayY, rayX - wallRayDistance, rayY);
