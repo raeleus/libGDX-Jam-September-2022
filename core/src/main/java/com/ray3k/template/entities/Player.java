@@ -14,9 +14,9 @@ public class Player extends SlopeCharacter {
         animationData.setDefaultMix(.25f);
         setSkeletonData(skeletonData, animationData);
         maintainExtraLateralMomentum = true;
-        canClingToWalls = true;
-        canClimbWalls = true;
-        canWallJump = true;
+        allowClingToWalls = true;
+        allowClimbWalls = true;
+        allowWallJump = true;
     }
     
     @Override

@@ -1,11 +1,11 @@
 package com.ray3k.template.entities;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
 import com.badlogic.gdx.physics.box2d.Contact;
 import com.badlogic.gdx.physics.box2d.Fixture;
-import com.badlogic.gdx.physics.box2d.RayCastCallback;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.ray3k.template.*;
 import com.ray3k.template.entities.Bounds.*;
@@ -85,9 +85,20 @@ public abstract class SlopeCharacter extends Entity {
      * If true, the character will stick to the ground and slide on slopes as long as the groundAngle is within maxWalkAngle and maxSlideAngle respectively
      */
     public boolean stickToGround = true;
-    public boolean canClingToWalls;
-    public boolean canClimbWalls;
-    public boolean canWallJump;
+    /**
+     * If true, the character can cling to walls if moveWallClingRight() or moveWallClingLeft() are called while
+     * contacting a wall in the air.
+     */
+    public boolean allowClingToWalls;
+    /**
+     * If true, the character can climb up and down while clinging onto a wall if moveClimbUp() or moveClimbDown() are
+     * called.
+     */
+    public boolean allowClimbWalls;
+    /**
+     * If true, the character can perform a wall jump while clinging onto a wall if moveJump() is called.
+     */
+    public boolean allowWallJump;
     /**
      * If true, the character is allowed to maintain additional momentum if they are holding the input in that direction.
      */
@@ -142,6 +153,12 @@ public abstract class SlopeCharacter extends Entity {
      */
     public float lateralAirDeceleration = 2500;
     /**
+     * The maximum acceleration for left and right movement that the character has while in the air performing a wall
+     * jump. This is only effective for the time while the character is in the air defined by wallJumpDeactivateTime.
+     * The actual acceleration is diminished on a curve as the character approaches lateralMaxSpeed.
+     */
+    public float lateralAirWallJumpingAcceleration = 500;
+    /**
      * The minimum deceleration for left and right movement that the character has when they stop moving in the air. This is implemented when there is no left
      * or right input. This is used when the character is close to lateralAirMaxSpeed.
      */
@@ -152,15 +169,56 @@ public abstract class SlopeCharacter extends Entity {
      */
     public float lateralAirStopDeceleration = 500;
     
+    /**
+     * The maximum speed that the player will slide down the wall by gravity while wall clinging.
+     */
     public float wallSlideMaxSpeed = 400;
+    /**
+     * How fast the character accelerates downwards while wall clinging.
+     */
     public float wallSlideAcceleration = -400;
+    /**
+     * The maximum speed that the character can climb walls.
+     */
     public float wallClimbMaxSpeed = 800;
+    /**
+     * How fast movement is accelerated while climbing up or down.
+     */
     public float wallClimbAcceleration = 5000;
+    /**
+     * The length of the ray used to check if the player is connected to a wall on the left or right.
+     */
     public float wallRayDistance = 20;
+    /**
+     * The vertical offset of the ray used to check if the player is connected to a wall on the left or right. This is
+     * measured from the offset of the foot fixture.
+     */
     public float wallClimbRayYoffset;
+    /**
+     * The speed of the jump when the player is climbing up and reaches the top of the wall. This allows for landing on
+     * top of the platform even if the climb speed is slow.
+     */
     public float wallClimbLedgeJumpSpeed = 800;
+    /**
+     * The angle of the wall jump if jumping from a wall on the character's left side. This angle is mirrored over the
+     * vertical axis if the wall is on the right side.
+     */
     public float wallJumpAngle = 60;
+    /**
+     * The speed of the wall jump.
+     */
     public float wallJumpSpeed = 1200;
+    /**
+     * The length of time when the character's acceleration is penalized from the wall jump. Acceleration returns to
+     * normal afterwards.
+     * @see SlopeCharacter#lateralAirWallJumpingAcceleration
+     */
+    public float wallJumpDeactivateTime = .5f;
+    /**
+     * The time period from a jump where the character is not allowed to cling to a wall. This prevents the character
+     * from clinging to a wall immediately when pressed up in a corner.
+     */
+    public float clingToWallThreshold = .3f;
     
     /**
      * The signed gravity applied to the character while the character is in the air.
@@ -194,33 +252,42 @@ public abstract class SlopeCharacter extends Entity {
     public Fixture footFixture;
     
     /**
-     * true if the character is touching the ground.
+     * True if the character is touching the ground.
      */
     public boolean grounded;
     /**
-     * true if the character is in the air.
+     * True if the character is in the air.
      */
     public boolean falling;
     /**
-     * true if the character initiated a jump.
+     * True if the character initiated a jump.
      */
     public boolean jumping;
     /**
-     * true if the ground the character is on can be walked on. 90 is completely flat ground.
+     * True if the character just jumped from a wall. The character's air acceleration is penalized while this is true.
+     * @see SlopeCharacter#wallJumpDeactivateTime
+     * @see SlopeCharacter#lateralAirWallJumpingAcceleration
+     */
+    public boolean wallJumping;
+    /**
+     * True if the ground the character is on can be walked on. 90 is completely flat ground.
      */
     public boolean canWalkOnSlope;
     /**
-     * true if the ground can be slid on. It must not be walkable ground. 90 is completely flat ground.
+     * True if the ground can be slid on. It must not be walkable ground. 90 is completely flat ground.
      */
     public boolean canSlideOnSlope;
     /**
-     * true if the surface the character is on can be jumped from. See allowJumpingWhileSliding.
+     * True if the surface the character is on can be jumped from. See allowJumpingWhileSliding.
      */
     public boolean canJump;
     /**
-     * true if touching a wall.
+     * True if touching a wall.
      */
     private boolean touchingWall;
+    /**
+     * True if the character is clinging to a wall.
+     */
     private boolean clingingToWall;
     /**
      * true if hitting a ceiling.
@@ -277,14 +344,37 @@ public abstract class SlopeCharacter extends Entity {
      * Character called moveJump() for this frame when inputJump was false last frame.
      */
     private float inputJumpJustPressed;
+    /**
+     * Character called moveWallClingLeft() for this frame.
+     * @see SlopeCharacter#moveWallClingLeft()
+     */
     private boolean inputWallClingLeft;
+    /**
+     * Character called moveWallClingRight() for this frame.
+     * @see SlopeCharacter#moveWallClingRight()
+     */
     private boolean inputWallClingRight;
+    /**
+     * Character called moveClimbUp() for this frame.
+     * @see SlopeCharacter#moveClimbUp()
+     */
     private boolean inputWallClimbUp;
+    /**
+     * Character called moveClimbDown() for this frame.
+     * @see SlopeCharacter#moveClimbDown()
+     */
     private boolean inputWallClimbDown;
     /**
      * Counts down continuously and is reset when the player begins to fall. Used to compare against coyoteTime.
      */
     private float coyoteTimer;
+    /**
+     * Counts down after the character initiates a wall jump. This tracks how long the character's air acceleration is
+     * penalized.
+     * @see SlopeCharacter#lateralAirWallJumpingAcceleration
+     * @see SlopeCharacter#wallJumpDeactivateTime
+     */
+    private float wallJumpTimer;
     
     public SlopeCharacter(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
         this.footOffsetX = footOffsetX;
@@ -344,7 +434,7 @@ public abstract class SlopeCharacter extends Entity {
 
             if (!grounded) {
                 falling = true;
-                coyoteTimer = coyoteTime;
+                if (canWalkOnSlope || allowJumpingWhileSliding) coyoteTimer = coyoteTime;
             }
         }
         slopeCheck();
@@ -360,6 +450,7 @@ public abstract class SlopeCharacter extends Entity {
         inputWallClingRight = false;
         
         coyoteTimer -= delta;
+        wallJumpTimer -= delta;
         handleControls();
         if (inputJump && !lastInputJump) inputJumpJustPressed = jumpTriggerDelay;
         
@@ -369,7 +460,7 @@ public abstract class SlopeCharacter extends Entity {
                 "\nGrounded: " + grounded +
                 "\nFalling: " + falling +
                 "\nHit Head: " + hitHead +
-                "\nTouched Ground Fixtures: " + touchedGroundFixtures.size +
+                "\nWall Jumping: " + wallJumping +
                 "\nLateral Speed: " + lateralSpeed +
                 "\nGround Angle: " + groundAngle +
                 "\nTouching Wall: " + touchingWall +
@@ -433,6 +524,7 @@ public abstract class SlopeCharacter extends Entity {
      */
     public void applyAirForce(float speed, float direction) {
         jumping = false;
+        wallJumping = false;
         falling = true;
         canJump = false;
         coyoteTimer = 0;
@@ -449,7 +541,7 @@ public abstract class SlopeCharacter extends Entity {
     private void applyMovement(float delta) {
         var lastClingingToWall = clingingToWall;
         boolean wallToRight = Utils.isEqual360(wallAngle, 180, 90);
-        if (!canClingToWalls || coyoteTimer > -.3f) clingingToWall = false;
+        if (!allowClingToWalls || coyoteTimer > -clingToWallThreshold) clingingToWall = false;
         else {
             if (!inputWallClingRight && wallToRight || !inputWallClingLeft && !wallToRight) clingingToWall = false;
             if (falling && (touchingWall || lastClingingToWall)) {
@@ -516,7 +608,7 @@ public abstract class SlopeCharacter extends Entity {
             movementMode = WALL_CLINGING;
             deltaX = 0;
             if (!lastClingingToWall) deltaY = 0;
-            if (canClimbWalls && (inputWallClimbUp || inputWallClimbDown)) {
+            if (allowClimbWalls && (inputWallClimbUp || inputWallClimbDown)) {
                 var goUp = inputWallClimbUp ? 1f : -1f;
                 deltaY = Utils.throttledAcceleration(deltaY, goUp * wallClimbMaxSpeed, goUp * wallClimbAcceleration * delta, false);
                 gravityY = 0;
@@ -529,10 +621,13 @@ public abstract class SlopeCharacter extends Entity {
         } else {
             movementMode = FALLING;
             gravityY = gravity;
+            
+            if (wallJumpTimer < 0) wallJumping = false;
     
             if (inputRight || inputLeft) {
                 var goRight = inputRight ? 1f : -1f;
                 var acceleration = Math.signum(deltaX) == goRight ? lateralAirAcceleration : lateralAirDeceleration;
+                if (wallJumping) acceleration = lateralAirWallJumpingAcceleration;
                 deltaX = Utils.throttledAcceleration(deltaX, goRight * lateralAirMaxSpeed, goRight * acceleration * delta, maintainExtraLateralMomentum);
             } else {
                 deltaX = Utils.throttledDeceleration(deltaX, lateralAirMaxSpeed, lateralAirStopMinDeceleration * delta, lateralAirStopDeceleration * delta);
@@ -550,6 +645,7 @@ public abstract class SlopeCharacter extends Entity {
             
             if (jumping && deltaY > 0 && !inputJump) {
                 jumping = false;
+                wallJumping = false;
                 deltaY *= jumpReleaseDampening;
             }
             
@@ -580,12 +676,14 @@ public abstract class SlopeCharacter extends Entity {
             deltaY = wallClimbLedgeJumpSpeed;
         }
         
-        if (canWallJump && clingingToWall && inputJump) {
+        if (allowWallJump && clingingToWall && MathUtils.isEqual(inputJumpJustPressed, jumpTriggerDelay)) {
             jumping = true;
+            wallJumping = true;
+            wallJumpTimer = wallJumpDeactivateTime;
             falling = true;
             canJump = false;
             coyoteTimer = 0;
-            setMotion(wallJumpSpeed, wallToRight ? wallJumpAngle + 90 : wallJumpAngle);
+            setMotion(wallJumpSpeed, wallToRight ? 180 - wallJumpAngle : wallJumpAngle);
         }
     }
     
@@ -651,6 +749,7 @@ public abstract class SlopeCharacter extends Entity {
                     if (falling) {
                         falling = false;
                         jumping = false;
+                        wallJumping = false;
                     }
                 }
     
