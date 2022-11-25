@@ -9,6 +9,7 @@ import static com.ray3k.template.Core.*;
 
 public class Bounds extends Entity {
     public float[] points;
+    public int edgeCount;
     
     public Bounds(float[] points) {
         this.points = points;
@@ -55,10 +56,12 @@ public class Bounds extends Entity {
                 edgeShape.setVertex3(points[i + 4 - points.length], points[i + 5 - points.length]);
     
             var fixture = body.createFixture(edgeShape, .5f);
+            edgeCount ++;
             fixture.setFriction(0);
             fixture.getFilterData().categoryBits = CATEGORY_BOUNDS;
     
             var data = new BoundsData();
+            data.fixture = fixture;
             temp1.set(nextX, nextY);
             temp2.set(points[i], points[i + 1]);
             if (!clockwise) {
@@ -135,5 +138,60 @@ public class Bounds extends Entity {
         public float angle;
         public Fixture previousFixture;
         public Fixture nextFixture;
+        public Fixture fixture;
+        
+        public int distanceToFixture(Fixture otherFixture) {
+            if (fixture == otherFixture) return 0;
+            var bounds = (Bounds) fixture.getBody().getUserData();
+            if (otherFixture.getBody().getUserData() != bounds) return Integer.MAX_VALUE;
+            var distance = 1;
+            var fix = nextFixture;
+            while (fix != otherFixture) {
+                distance++;
+                fix = ((BoundsData)fix.getUserData()).nextFixture;
+            }
+    
+            return Math.min(bounds.edgeCount - distance, distance);
+        }
+        
+        public boolean checkFixturesBetween(Fixture otherFixture, CompareBoundsFixtures compare) {
+            var bounds = (Bounds) fixture.getBody().getUserData();
+            if (otherFixture.getBody().getUserData() != bounds) return false;
+            
+            if (fixture == otherFixture || nextFixture == otherFixture || previousFixture == otherFixture) return true;
+            
+            var accepted = true;
+            var distanceNext = 1;
+            var nextFix = nextFixture;
+            while (nextFix != otherFixture) {
+                if (!compare.accept(nextFix)) {
+                    accepted = false;
+                    break;
+                }
+                nextFix = ((BoundsData)nextFix.getUserData()).nextFixture;
+                distanceNext++;
+            }
+            System.out.println("distanceNext = " + distanceNext);
+            
+            if (!accepted) {
+                accepted = true;
+                var distancePrevious = 1;
+                var prevFix = previousFixture;
+                while (prevFix != otherFixture) {
+                    if (!compare.accept(prevFix) || distancePrevious > distanceNext) {
+                        accepted = false;
+                        break;
+                    }
+                    prevFix = ((BoundsData) prevFix.getUserData()).previousFixture;
+                    distancePrevious++;
+                }
+                System.out.println("distancePrevious = " + distancePrevious);
+            }
+            return accepted;
+        }
+    }
+    
+    public static interface CompareBoundsFixtures {
+        public boolean accept(Fixture fixture);
     }
 }

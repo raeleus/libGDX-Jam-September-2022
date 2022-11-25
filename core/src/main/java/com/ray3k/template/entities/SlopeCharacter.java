@@ -100,6 +100,11 @@ public abstract class SlopeCharacter extends Entity {
      */
     public boolean allowWallJump;
     /**
+     * If true, the character can walk up slopes that typically the character would slide down. The character will still
+     * slide downward if the appropriate input is not pressed.
+     */
+    public boolean allowWalkUpSlides;
+    /**
      * If true, the character is allowed to maintain additional momentum if they are holding the input in that direction.
      */
     public boolean maintainExtraLateralMomentum;
@@ -422,11 +427,16 @@ public abstract class SlopeCharacter extends Entity {
             world.rayCast((fixture, point, normal, fraction) -> {
                 if (fixture.getBody().getUserData() instanceof Bounds) {
                     var data = (BoundsData) fixture.getUserData();
-                    if (lastTouchedGroundFixtures.contains(data.previousFixture) || lastTouchedGroundFixtures.contains(data.nextFixture) || lastTouchedGroundFixtures.contains(fixture)) {
-                        contactAngle = normal.angleDeg();
-                        groundAngle = ((BoundsData)fixture.getUserData()).angle;
-                        grounded = true;
-                        return 0;
+                    for (var lastTouchedGroundFixture : lastTouchedGroundFixtures) {
+                        if (data.checkFixturesBetween(lastTouchedGroundFixture, fixture1 -> {
+                            var angle = ((BoundsData) fixture1.getUserData()).angle;
+                            return Utils.isEqual360(angle, 90, maxSlideAngle);
+                        })) {
+                            contactAngle = normal.angleDeg();
+                            groundAngle = ((BoundsData) fixture.getUserData()).angle;
+                            grounded = true;
+                            return 0;
+                        }
                     }
                 }
                 return 1;
@@ -592,10 +602,24 @@ public abstract class SlopeCharacter extends Entity {
             }
             else setSpeed(0);
     
-            if (Utils.isEqual360(contactAngle, 0, 90)) {
-                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, lateralSlideMaxSpeed, lateralSlideAcceleration * delta, maintainExtraLateralMomentum);
-            } else {
-                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, -lateralSlideMaxSpeed, -lateralSlideAcceleration * delta, maintainExtraLateralMomentum);
+            var slideDown = true;
+            if (allowWalkUpSlides) {
+                if (inputRight || inputLeft) {
+                    slideDown = false;
+                    var goRight = inputRight ? 1f : -1f;
+                    var acceleration = Math.signum(lateralSpeed) == goRight ? lateralAcceleration : lateralDeceleration;
+                    lateralSpeed = Utils.throttledAcceleration(lateralSpeed, goRight * lateralMaxSpeed, goRight * acceleration * delta, maintainExtraLateralMomentum);
+                }
+            }
+            
+            if (slideDown) {
+                if (Utils.isEqual360(contactAngle, 0, 90)) {
+                    lateralSpeed = Utils.throttledAcceleration(lateralSpeed, lateralSlideMaxSpeed,
+                            lateralSlideAcceleration * delta, maintainExtraLateralMomentum);
+                } else {
+                    lateralSpeed = Utils.throttledAcceleration(lateralSpeed, -lateralSlideMaxSpeed,
+                            -lateralSlideAcceleration * delta, maintainExtraLateralMomentum);
+                }
             }
     
             if (touchingWall) {
