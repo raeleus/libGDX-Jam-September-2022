@@ -171,7 +171,6 @@ public class Bounds extends Entity {
                 nextFix = ((BoundsData)nextFix.getUserData()).nextFixture;
                 distanceNext++;
             }
-            System.out.println("distanceNext = " + distanceNext);
             
             if (!accepted) {
                 accepted = true;
@@ -185,7 +184,6 @@ public class Bounds extends Entity {
                     prevFix = ((BoundsData) prevFix.getUserData()).previousFixture;
                     distancePrevious++;
                 }
-                System.out.println("distancePrevious = " + distancePrevious);
             }
             return accepted;
         }

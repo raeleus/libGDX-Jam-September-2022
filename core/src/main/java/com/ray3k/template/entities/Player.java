@@ -18,6 +18,8 @@ public class Player extends SlopeCharacter {
         allowClimbWalls = true;
         allowWallJump = true;
         allowWalkUpSlides = true;
+        automaticallyClingToWalls = false;
+        allowWallJumpWithoutCling = true;
     }
     
     @Override

@@ -66,7 +66,7 @@ public abstract class SlopeCharacter extends Entity {
     /**
      * The velocity used to correct the position of the character above the ground when it's floating above a slope. This usually only occurs when going down hill.
      */
-    public float slopeStickForce = 100;
+    public float slopeStickForce = 500;
     /**
      * The additional time the character is allowed to jump after falling off a ledge
      */
@@ -99,6 +99,8 @@ public abstract class SlopeCharacter extends Entity {
      * If true, the character can perform a wall jump while clinging onto a wall if moveJump() is called.
      */
     public boolean allowWallJump;
+    public boolean allowWallJumpWithoutCling;
+    public boolean automaticallyClingToWalls;
     /**
      * If true, the character can walk up slopes that typically the character would slide down. The character will still
      * slide downward if the appropriate input is not pressed.
@@ -553,10 +555,10 @@ public abstract class SlopeCharacter extends Entity {
         boolean wallToRight = Utils.isEqual360(wallAngle, 180, 90);
         if (!allowClingToWalls || coyoteTimer > -clingToWallThreshold) clingingToWall = false;
         else {
-            if (!inputWallClingRight && wallToRight || !inputWallClingLeft && !wallToRight) clingingToWall = false;
+            if (!inputWallClingRight && wallToRight || !inputWallClingLeft && !wallToRight || automaticallyClingToWalls) clingingToWall = false;
             if (falling && (touchingWall || lastClingingToWall)) {
-                var clingingToRight = wallToRight && inputWallClingRight;
-                var clingingToLeft = !wallToRight && inputWallClingLeft;
+                var clingingToRight = wallToRight && (inputWallClingRight || automaticallyClingToWalls);
+                var clingingToLeft = !wallToRight && (inputWallClingLeft || automaticallyClingToWalls);
                 if (clingingToRight || clingingToLeft) {
                     clingingToWall = false;
                     var rayX = p2m(x + footRayOffsetX + (clingingToRight ? footRadius : -footRadius));
@@ -700,7 +702,7 @@ public abstract class SlopeCharacter extends Entity {
             deltaY = wallClimbLedgeJumpSpeed;
         }
         
-        if (allowWallJump && clingingToWall && MathUtils.isEqual(inputJumpJustPressed, jumpTriggerDelay)) {
+        if (allowWallJump && (clingingToWall || allowWallJumpWithoutCling && touchingWall) && MathUtils.isEqual(inputJumpJustPressed, jumpTriggerDelay)) {
             jumping = true;
             wallJumping = true;
             wallJumpTimer = wallJumpDeactivateTime;
