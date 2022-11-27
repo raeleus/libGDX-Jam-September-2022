@@ -306,7 +306,13 @@ public abstract class SlopeCharacter extends Entity {
      * True if the surface the character is on can be jumped from. See allowJumpingWhileSliding.
      */
     public boolean canJump;
+    /**
+     * True if the character is in the air and can perform a midair jump.
+     */
     public boolean canMidairJump;
+    /**
+     * True if the character is in the air, touching a wall, and can perform a wall jump.
+     */
     public boolean canWallJump;
     /**
      * True if touching a wall.
@@ -402,7 +408,16 @@ public abstract class SlopeCharacter extends Entity {
      * @see SlopeCharacter#wallJumpDeactivateTime
      */
     private float wallJumpTimer;
+    /**
+     * Counts down after the character initiates a midair jump. This tracks how long until the player can conduct
+     * another midair jump.
+     */
     private float midairJumpTimer;
+    /**
+     * Counts the number of midair jumps the character has performed. This value is tested against midairJumps before
+     * performing another midair jump.
+     * @see SlopeCharacter#midairJumps
+     */
     public int midairJumpCounter;
     
     public SlopeCharacter(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
