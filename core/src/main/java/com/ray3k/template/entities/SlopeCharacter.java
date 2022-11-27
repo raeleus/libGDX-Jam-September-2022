@@ -99,7 +99,13 @@ public abstract class SlopeCharacter extends Entity {
      * If true, the character can perform a wall jump while clinging onto a wall if moveJump() is called.
      */
     public boolean allowWallJump;
+    /**
+     * If true, the character can perform wall jump while they are next to a wall in the air without needing to cling on.
+     */
     public boolean allowWallJumpWithoutCling;
+    /**
+     * If true, Automatically cling to walls if the character is adjacent to one in the air.
+     */
     public boolean automaticallyClingToWalls;
     /**
      * If true, the character can walk up slopes that typically the character would slide down. The character will still
@@ -239,7 +245,19 @@ public abstract class SlopeCharacter extends Entity {
      * The maximum downward velocity when the character is in the air.
      */
     public float terminalVelocity = 3000;
-    
+    /**
+     * The number of midair jumps the character is allowed to conduct. Set to 0 for no mid-air jumps. Set to -1 for
+     * unlimited midair jumps.
+     */
+    public int midairJumps;
+    /**
+     * The initial velocity of upwards movement when the character presses the jump input while in the air.
+     */
+    public float midairJumpSpeed = 1500;
+    /**
+     * The delay between multiple midair jumps.
+     */
+    public float midairJumpDelay = .5f;
     /**
      * Set to true to allow the character to jump while sliding.
      */
@@ -288,6 +306,8 @@ public abstract class SlopeCharacter extends Entity {
      * True if the surface the character is on can be jumped from. See allowJumpingWhileSliding.
      */
     public boolean canJump;
+    public boolean canMidairJump;
+    public boolean canWallJump;
     /**
      * True if touching a wall.
      */
@@ -382,6 +402,8 @@ public abstract class SlopeCharacter extends Entity {
      * @see SlopeCharacter#wallJumpDeactivateTime
      */
     private float wallJumpTimer;
+    private float midairJumpTimer;
+    public int midairJumpCounter;
     
     public SlopeCharacter(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
         this.footOffsetX = footOffsetX;
@@ -463,10 +485,11 @@ public abstract class SlopeCharacter extends Entity {
         
         coyoteTimer -= delta;
         wallJumpTimer -= delta;
+        midairJumpTimer -= delta;
         handleControls();
         if (inputJump && !lastInputJump) inputJumpJustPressed = jumpTriggerDelay;
         
-        applyMovement(delta);
+        handleMovement(delta);
     
         GameScreen.statsLabel.setText("Movement Mode: " + movementMode +
                 "\nGrounded: " + grounded +
@@ -550,7 +573,7 @@ public abstract class SlopeCharacter extends Entity {
      */
     public abstract void handleControls();
     
-    private void applyMovement(float delta) {
+    private void handleMovement(float delta) {
         var lastClingingToWall = clingingToWall;
         boolean wallToRight = Utils.isEqual360(wallAngle, 180, 90);
         if (!allowClingToWalls || coyoteTimer > -clingToWallThreshold) clingingToWall = false;
@@ -679,8 +702,29 @@ public abstract class SlopeCharacter extends Entity {
             if (deltaY < -term) deltaY = -term;
         }
     
-        if (allowJumpingWhileSliding) canJump = grounded && !falling || coyoteTimer > 0;
-        else canJump = grounded && !falling && canWalkOnSlope || coyoteTimer > 0;
+        canMidairJump = falling &&  coyoteTimer <= 0 && midairJumpTimer < 0 && (midairJumpCounter < midairJumps || midairJumps == -1);
+        canWallJump = !grounded && (clingingToWall || allowWallJumpWithoutCling && touchingWall);
+        if (allowJumpingWhileSliding) canJump = grounded && !falling || coyoteTimer > 0 || canMidairJump;
+        else canJump = grounded && !falling && canWalkOnSlope || coyoteTimer > 0 || canMidairJump;
+    
+        if (lastClingingToWall && !clingingToWall && inputWallClimbUp) {
+            jumping = false;
+            falling = true;
+            canJump = false;
+            coyoteTimer = 0;
+            deltaY = wallClimbLedgeJumpSpeed;
+        }
+    
+        if (allowWallJump && canWallJump && MathUtils.isEqual(inputJumpJustPressed, jumpTriggerDelay)) {
+            jumping = true;
+            wallJumping = true;
+            wallJumpTimer = wallJumpDeactivateTime;
+            falling = true;
+            canJump = false;
+            coyoteTimer = 0;
+            inputJumpJustPressed = 0;
+            setMotion(wallJumpSpeed, wallToRight ? 180 - wallJumpAngle : wallJumpAngle);
+        }
         
         if (canJump) {
             if (inputJumpJustPressed > 0) {
@@ -690,26 +734,13 @@ public abstract class SlopeCharacter extends Entity {
                 coyoteTimer = 0;
                 inputJumpJustPressed = 0;
                 if (inputLeft || inputRight) deltaX = lateralSpeed;
-                deltaY = jumpSpeed;
+                deltaY = !canMidairJump ? jumpSpeed : midairJumpSpeed;
+                if (canMidairJump) {
+                    midairJumpCounter++;
+                    System.out.println("midairJumpTimer = " + midairJumpTimer);
+                    midairJumpTimer = midairJumpDelay;
+                }
             }
-        }
-        
-        if (lastClingingToWall && !clingingToWall && inputWallClimbUp) {
-            jumping = false;
-            falling = true;
-            canJump = false;
-            coyoteTimer = 0;
-            deltaY = wallClimbLedgeJumpSpeed;
-        }
-        
-        if (allowWallJump && (clingingToWall || allowWallJumpWithoutCling && touchingWall) && MathUtils.isEqual(inputJumpJustPressed, jumpTriggerDelay)) {
-            jumping = true;
-            wallJumping = true;
-            wallJumpTimer = wallJumpDeactivateTime;
-            falling = true;
-            canJump = false;
-            coyoteTimer = 0;
-            setMotion(wallJumpSpeed, wallToRight ? 180 - wallJumpAngle : wallJumpAngle);
         }
     }
     
@@ -776,6 +807,7 @@ public abstract class SlopeCharacter extends Entity {
                         falling = false;
                         jumping = false;
                         wallJumping = false;
+                        midairJumpCounter = 0;
                     }
                 }
     
