@@ -281,9 +281,28 @@ public abstract class SlopeCharacter extends Entity {
      * angle changes direction.
      */
     public boolean allowSwingTerminationAtApex;
+    /**
+     * If set to false, the character's velocity is set to 0 when the swing is initiated. The swingImpulse is added
+     * afterwards.
+     */
     public boolean swingMaintainVelocity = true;
+    /**
+     * The x offset of the swing anchor body attached to the character body.
+     */
     public float swingCharacterAnchorOffsetX;
+    /**
+     * The y offset of the swing anchor body attached to the character body.
+     */
     public float swingCharacterAnchorOffsetY;
+    /**
+     * The maximum speed for left and right movement that the character is allowed to move manually during a swing.
+     */
+    public float lateralSwingMaxSpeed = 2000;
+    /**
+     * The maximum acceleration for left and right movement that the character has while swinging. The actual acceleration is diminished on a curve
+     * as the character approaches lateralMaxSpeed.
+     */
+    public float lateralSwingAcceleration = 2500;
     
     /**
      * Set to true to draw slope debug lines.
@@ -833,6 +852,14 @@ public abstract class SlopeCharacter extends Entity {
             
             body.applyLinearImpulse(0, p2m(swingGravity * delta), p2m(anchorCharacterX), p2m(anchorCharacterY), true);
             body.setLinearVelocity(body.getLinearVelocity().x * (1 - swingFriction * delta), body.getLinearVelocity().y * (1 - swingFriction * delta));
+    
+            
+            if (inputRight || inputLeft) {
+                lateralSpeed = m2p(body.getLinearVelocity().x);
+                var goRight = inputRight ? 1f : -1f;
+                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, goRight * lateralSwingMaxSpeed, goRight * lateralSwingAcceleration * delta, maintainExtraLateralMomentum);
+                body.setLinearVelocity(p2m(lateralSpeed), body.getLinearVelocity().y);
+            }
         } else {
             movementMode = FALLING;
             gravityY = gravity;
