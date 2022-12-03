@@ -22,6 +22,7 @@ public class Player extends SlopeCharacter {
         allowWallJumpWithoutCling = true;
         midairJumps = -1;
         swingImpulse = 0;
+        swingCharacterAnchorOffsetY = 50;
     }
     
     @Override

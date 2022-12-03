@@ -282,6 +282,8 @@ public abstract class SlopeCharacter extends Entity {
      */
     public boolean allowSwingTerminationAtApex;
     public boolean swingMaintainVelocity = true;
+    public float swingCharacterAnchorOffsetX;
+    public float swingCharacterAnchorOffsetY;
     
     /**
      * Set to true to draw slope debug lines.
@@ -780,7 +782,10 @@ public abstract class SlopeCharacter extends Entity {
                 if (deltaY < maxSpeed) deltaY = maxSpeed;
             }
         } else if (swinging) {
+            var anchorCharacterX = x + swingCharacterAnchorOffsetX;
+            var anchorCharacterY = y + swingCharacterAnchorOffsetY;
             if (inputSwingJustPressed && swingAnchorOrigin == null) {
+                
                 BodyDef bodyDef = new BodyDef();
                 bodyDef.type = BodyType.StaticBody;
                 bodyDef.position.set(p2m(swingTargetX), p2m(swingTargetY));
@@ -807,8 +812,8 @@ public abstract class SlopeCharacter extends Entity {
                 revoluteJointDef.bodyB = swingAnchorCharacter;
                 revoluteJointDef.collideConnected = false;
                 revoluteJointDef.localAnchorA.set(0, 0);
-                revoluteJointDef.localAnchorB.set(p2m(swingTargetX - x), p2m(swingTargetY - y));
-                revoluteJointDef.referenceAngle = MathUtils.degRad * Utils.pointDirection(swingTargetX, swingTargetY, x, y);
+                revoluteJointDef.localAnchorB.set(p2m(swingTargetX - anchorCharacterX), p2m(swingTargetY - anchorCharacterY));
+                revoluteJointDef.referenceAngle = MathUtils.degRad * Utils.pointDirection(swingTargetX, swingTargetY, anchorCharacterX, anchorCharacterY);
                 swingJoint = (RevoluteJoint) world.createJoint(revoluteJointDef);
     
                 revoluteJointDef = new RevoluteJointDef();
@@ -816,18 +821,17 @@ public abstract class SlopeCharacter extends Entity {
                 revoluteJointDef.bodyB = body;
                 revoluteJointDef.collideConnected = false;
                 revoluteJointDef.localAnchorA.set(0, 0);
-                revoluteJointDef.localAnchorB.set(0, 0);
+                revoluteJointDef.localAnchorB.set(p2m(swingCharacterAnchorOffsetX), p2m(swingCharacterAnchorOffsetY));
                 world.createJoint(revoluteJointDef);
                 
                 bodyVelocityControl = false;
                 temp1.set(p2m(swingImpulse), 0);
-                temp1.rotateDeg(Utils.pointDirection(x, y, swingTargetX, swingTargetY) + (x < swingTargetX ? -90 : 90));
-                System.out.println("body.getLinearVelocity().x = " + body.getLinearVelocity().x);
+                temp1.rotateDeg(Utils.pointDirection(anchorCharacterX, anchorCharacterY, swingTargetX, swingTargetY) + (anchorCharacterX < swingTargetX ? -90 : 90));
                 if (!swingMaintainVelocity) body.setLinearVelocity(temp1.x, temp1.y);
                 else body.setLinearVelocity(body.getLinearVelocity().x + temp1.x, body.getLinearVelocity().y + temp1.y);
             }
             
-            body.applyLinearImpulse(0, p2m(swingGravity * delta), p2m(x), p2m(y), true);
+            body.applyLinearImpulse(0, p2m(swingGravity * delta), p2m(anchorCharacterX), p2m(anchorCharacterY), true);
             body.setLinearVelocity(body.getLinearVelocity().x * (1 - swingFriction * delta), body.getLinearVelocity().y * (1 - swingFriction * delta));
         } else {
             movementMode = FALLING;
