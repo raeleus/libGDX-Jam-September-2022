@@ -36,6 +36,7 @@ public abstract class Entity {
     public float depth;
     public boolean sleepable = true;
     public boolean sleeping;
+    public boolean bodyVelocityControl = true;
     
     public abstract void create();
     public abstract void actBefore(float delta);

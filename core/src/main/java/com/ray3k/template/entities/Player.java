@@ -21,6 +21,7 @@ public class Player extends SlopeCharacter {
         automaticallyClingToWalls = false;
         allowWallJumpWithoutCling = true;
         midairJumps = -1;
+        swingImpulse = 0;
     }
     
     @Override
@@ -33,13 +34,15 @@ public class Player extends SlopeCharacter {
         if (Core.isBindingPressed(Binding.RIGHT)) moveWallClingRight();
         if (Core.isBindingPressed(Binding.UP)) moveClimbUp();
         if (Core.isBindingPressed(Binding.DOWN)) moveClimbDown();
+        
+        if (Core.isButtonPressed(Buttons.LEFT)) moveSwing(mouseX, mouseY);
     }
     
     @Override
     public void act(float delta) {
         super.act(delta);
         if (Core.isButtonJustPressed(Buttons.RIGHT)) {
-            applyAirForce(1500, Utils.pointDirection(x, y, mouseX, mouseY));
+            applyAirForce(3000, Utils.pointDirection(x, y, mouseX, mouseY));
         }
     }
 }

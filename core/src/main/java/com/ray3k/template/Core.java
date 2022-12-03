@@ -92,6 +92,7 @@ public class Core extends JamGame {
     public static float DEPTH_PARTICLES_BEHIND = 100;
     public static final short CATEGORY_BOUNDS = 0x1;
     public static final short CATEGORY_ENTITY = 0x1 << 1;
+    public static final short CATEGORY_NO_CONTACT = 0x1 << 2;
     
     public static boolean isKeyJustPressed(int key) {
         return key == Keys.ANY_KEY ? keysJustPressed.size > 0 : keysJustPressed.contains(key);

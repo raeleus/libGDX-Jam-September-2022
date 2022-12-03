@@ -106,8 +106,7 @@ public class EntityController implements Disposable {
     
             if (entity.body != null) {
                 var center = entity.body.getMassData().center;
-                entity.body.setLinearVelocity(p2m(entity.deltaX), p2m(entity.deltaY));
-//                entity.body.applyLinearImpulse(p2m(entity.deltaX * delta), p2m(entity.deltaY * delta), center.x, center.y, true);
+                if (entity.bodyVelocityControl) entity.body.setLinearVelocity(p2m(entity.deltaX), p2m(entity.deltaY));
                 entity.x = m2p(entity.body.getPosition().x);
                 entity.y = m2p(entity.body.getPosition().y);
             }

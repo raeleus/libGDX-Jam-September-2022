@@ -3,9 +3,10 @@ package com.ray3k.template.entities;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
-import com.badlogic.gdx.physics.box2d.Contact;
-import com.badlogic.gdx.physics.box2d.Fixture;
+import com.badlogic.gdx.physics.box2d.joints.RevoluteJoint;
+import com.badlogic.gdx.physics.box2d.joints.RevoluteJointDef;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.ray3k.template.*;
 import com.ray3k.template.entities.Bounds.*;
@@ -262,6 +263,26 @@ public abstract class SlopeCharacter extends Entity {
      * Set to true to allow the character to jump while sliding.
      */
     public boolean allowJumpingWhileSliding;
+    
+    /**
+     * The signed gravity applied to the character while the character is swinging.
+     */
+    public float swingGravity = -3000;
+    /**
+     * The velocity added to the character in the direction of the chracter's swing to prevent a lame movement
+     */
+    public float swingImpulse = 500;
+    /**
+     * The friction applied to the character movement so that he won't swing endlessly like a pendulum
+     */
+    public float swingFriction = .5f;
+    /**
+     * The swing is deactivated when the character reaches the apex of the swing. This is determined as when the swing
+     * angle changes direction.
+     */
+    public boolean allowSwingTerminationAtApex;
+    public boolean swingMaintainVelocity = true;
+    
     /**
      * Set to true to draw slope debug lines.
      */
@@ -294,6 +315,22 @@ public abstract class SlopeCharacter extends Entity {
      * @see SlopeCharacter#lateralAirWallJumpingAcceleration
      */
     public boolean wallJumping;
+    /**
+     * True if the character is swinging from a point.
+     */
+    public boolean swinging;
+    /**
+     * True if the character was swinging in the last frame.
+     */
+    public boolean previousSwinging;
+    /**
+     * The current angle of the swing measured from the player position to the swinging origin.
+     */
+    public float swingAngle;
+    /**
+     * The amount of swing angle that has changed since the last frame.
+     */
+    public float swingDelta;
     /**
      * True if the ground the character is on can be walked on. 90 is completely flat ground.
      */
@@ -351,15 +388,42 @@ public abstract class SlopeCharacter extends Entity {
     /**
      * The ground fixtures that were touched in this frame.
      */
-    private ObjectSet<Fixture> touchedGroundFixtures = new ObjectSet<>();
+    private final ObjectSet<Fixture> touchedGroundFixtures = new ObjectSet<>();
     /**
      * The ground fixtures that were touched in the last frame.
      */
-    private ObjectSet<Fixture> lastTouchedGroundFixtures = new ObjectSet<>();
+    private final ObjectSet<Fixture> lastTouchedGroundFixtures = new ObjectSet<>();
     /**
      * Clears the lastTouchedGroundFixtures when there is a new frame and a new ground contact has been made.
      */
     private boolean clearLastTouchedGroundFixtures;
+    /**
+     * The origin of the swinging joint. This body does not interact with the world and serves solely to facilitate the
+     * character swinging.
+     */
+    private Body swingAnchorOrigin;
+    /**
+     * The body attached to the character that facilitates swinging. This body does not interact with the world otherwise.
+     */
+    private Body swingAnchorCharacter;
+    /**
+     * The joint associated with the character swinging.
+     */
+    private RevoluteJoint swingJoint;
+    /**
+     * The world x position where the swing joint originates.
+     */
+    private float swingTargetX;
+    /**
+     * The world y position where the swing joint originates.
+     */
+    private float swingTargetY;
+    /**
+     * The previous amount of swing angle that has changed since the last frame.
+     */
+    private float previousSwingDelta;
+    private float jointAngle;
+    private float previousJointAngle;
     
     /**
      * Character called moveLeft() for this frame.
@@ -397,6 +461,8 @@ public abstract class SlopeCharacter extends Entity {
      * @see SlopeCharacter#moveClimbDown()
      */
     private boolean inputWallClimbDown;
+    private boolean inputSwing;
+    private boolean inputSwingJustPressed;
     /**
      * Counts down continuously and is reset when the player begins to fall. Used to compare against coyoteTime.
      */
@@ -497,19 +563,37 @@ public abstract class SlopeCharacter extends Entity {
         inputWallClimbUp = false;
         inputWallClingLeft = false;
         inputWallClingRight = false;
+        var lastInputSwing = inputSwing;
+        inputSwing = false;
+        inputSwingJustPressed = false;
         
         coyoteTimer -= delta;
         wallJumpTimer -= delta;
         midairJumpTimer -= delta;
         handleControls();
         if (inputJump && !lastInputJump) inputJumpJustPressed = jumpTriggerDelay;
+        if (inputSwing && !lastInputSwing) inputSwingJustPressed = true;
+        if (swingAnchorOrigin != null ) {
+            swingAngle = Utils.pointDirection(swingTargetX, swingTargetY, x, y);
+            previousJointAngle = jointAngle;
+            jointAngle = swingJoint.getJointAngle();
+            if (previousJointAngle == 0) previousJointAngle = jointAngle;
+            previousSwingDelta = swingDelta;
+            swingDelta = previousJointAngle - jointAngle;
+        } else {
+            swingAngle = -1;
+            swingDelta = 0;
+            previousSwingDelta = 0;
+            previousJointAngle = 0;
+            jointAngle = 0;
+        }
         
         handleMovement(delta);
     
         GameScreen.statsLabel.setText("Movement Mode: " + movementMode +
                 "\nGrounded: " + grounded +
                 "\nFalling: " + falling +
-                "\nHit Head: " + hitHead +
+                "\nSwing angle: " + swingAngle +
                 "\nWall Jumping: " + wallJumping +
                 "\nLateral Speed: " + lateralSpeed +
                 "\nGround Angle: " + groundAngle +
@@ -550,6 +634,12 @@ public abstract class SlopeCharacter extends Entity {
     
     public void moveClimbDown() {
         inputWallClimbDown = true;
+    }
+    
+    public void moveSwing(float x, float y) {
+        inputSwing = true;
+        swingTargetX = x;
+        swingTargetY = y;
     }
     
     /**
@@ -608,6 +698,13 @@ public abstract class SlopeCharacter extends Entity {
                     }, rayX, rayY, rayX + p2m(clingingToRight ? wallRayDistance : -wallRayDistance), rayY);
                 }
             }
+        }
+        
+        previousSwinging = swinging;
+        swinging = inputSwing && falling && !touchingWall;
+        if (previousSwinging && swinging && allowSwingTerminationAtApex && swingAnchorOrigin != null && !MathUtils.isZero(previousSwingDelta)) {
+            System.out.println("delta " + swingDelta + " previous " + previousSwingDelta);
+            if (Math.signum(swingDelta) != Math.signum(previousSwingDelta)) swinging = false;
         }
         
         if (stickToGround && grounded && canWalkOnSlope && !falling) {
@@ -682,6 +779,56 @@ public abstract class SlopeCharacter extends Entity {
                 if (deltaY > 0) deltaY = Utils.approach(deltaY, 0, wallClimbAcceleration * delta);
                 if (deltaY < maxSpeed) deltaY = maxSpeed;
             }
+        } else if (swinging) {
+            if (inputSwingJustPressed && swingAnchorOrigin == null) {
+                BodyDef bodyDef = new BodyDef();
+                bodyDef.type = BodyType.StaticBody;
+                bodyDef.position.set(p2m(swingTargetX), p2m(swingTargetY));
+                swingAnchorOrigin = world.createBody(bodyDef);
+    
+                BodyDef bodyDef2 = new BodyDef();
+                bodyDef2.type = BodyType.DynamicBody;
+                bodyDef2.position.set(p2m(x), p2m(y));
+                swingAnchorCharacter = world.createBody(bodyDef2);
+    
+                PolygonShape polygonShape = new PolygonShape();
+                polygonShape.setAsBox(p2m(10), p2m(10));
+                var fixture = swingAnchorOrigin.createFixture(polygonShape, 1f);
+                fixture.getFilterData().categoryBits = CATEGORY_NO_CONTACT;
+                fixture.getFilterData().maskBits = 0;
+                
+                fixture = swingAnchorCharacter.createFixture(polygonShape, 1f);
+                fixture.getFilterData().categoryBits = CATEGORY_NO_CONTACT;
+                fixture.getFilterData().maskBits = 0;
+                polygonShape.dispose();
+    
+                RevoluteJointDef revoluteJointDef = new RevoluteJointDef();
+                revoluteJointDef.bodyA = swingAnchorOrigin;
+                revoluteJointDef.bodyB = swingAnchorCharacter;
+                revoluteJointDef.collideConnected = false;
+                revoluteJointDef.localAnchorA.set(0, 0);
+                revoluteJointDef.localAnchorB.set(p2m(swingTargetX - x), p2m(swingTargetY - y));
+                revoluteJointDef.referenceAngle = MathUtils.degRad * Utils.pointDirection(swingTargetX, swingTargetY, x, y);
+                swingJoint = (RevoluteJoint) world.createJoint(revoluteJointDef);
+    
+                revoluteJointDef = new RevoluteJointDef();
+                revoluteJointDef.bodyA = swingAnchorCharacter;
+                revoluteJointDef.bodyB = body;
+                revoluteJointDef.collideConnected = false;
+                revoluteJointDef.localAnchorA.set(0, 0);
+                revoluteJointDef.localAnchorB.set(0, 0);
+                world.createJoint(revoluteJointDef);
+                
+                bodyVelocityControl = false;
+                temp1.set(p2m(swingImpulse), 0);
+                temp1.rotateDeg(Utils.pointDirection(x, y, swingTargetX, swingTargetY) + (x < swingTargetX ? -90 : 90));
+                System.out.println("body.getLinearVelocity().x = " + body.getLinearVelocity().x);
+                if (!swingMaintainVelocity) body.setLinearVelocity(temp1.x, temp1.y);
+                else body.setLinearVelocity(body.getLinearVelocity().x + temp1.x, body.getLinearVelocity().y + temp1.y);
+            }
+            
+            body.applyLinearImpulse(0, p2m(swingGravity * delta), p2m(x), p2m(y), true);
+            body.setLinearVelocity(body.getLinearVelocity().x * (1 - swingFriction * delta), body.getLinearVelocity().y * (1 - swingFriction * delta));
         } else {
             movementMode = FALLING;
             gravityY = gravity;
@@ -717,6 +864,18 @@ public abstract class SlopeCharacter extends Entity {
             if (deltaY < -term) deltaY = -term;
         }
     
+        if (previousSwinging && !swinging && swingAnchorOrigin != null) {
+            world.destroyBody(swingAnchorOrigin);
+            swingAnchorOrigin = null;
+            world.destroyBody(swingAnchorCharacter);
+            swingAnchorCharacter = null;
+            
+            bodyVelocityControl = true;
+            deltaX = m2p(body.getLinearVelocity().x);
+            deltaY = m2p(body.getLinearVelocity().y);
+            lateralSpeed = deltaX;
+        }
+        
         canMidairJump = falling &&  coyoteTimer <= 0 && midairJumpTimer < 0 && (midairJumpCounter < midairJumps || midairJumps == -1);
         canWallJump = !grounded && (clingingToWall || allowWallJumpWithoutCling && touchingWall);
         if (allowJumpingWhileSliding) canJump = grounded && !falling || coyoteTimer > 0 || canMidairJump;
