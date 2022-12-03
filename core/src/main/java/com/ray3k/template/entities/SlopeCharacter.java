@@ -484,6 +484,8 @@ public abstract class SlopeCharacter extends Entity {
     private boolean inputWallClimbDown;
     private boolean inputSwing;
     private boolean inputSwingJustPressed;
+    private final ObjectSet<Bounds> torsoPassThroughBounds = new ObjectSet<>();
+    private final ObjectSet<Bounds> footPassThroughBounds = new ObjectSet<>();
     /**
      * Counts down continuously and is reset when the player begins to fall. Used to compare against coyoteTime.
      */
@@ -942,7 +944,6 @@ public abstract class SlopeCharacter extends Entity {
                 deltaY = !canMidairJump ? jumpSpeed : midairJumpSpeed;
                 if (canMidairJump) {
                     midairJumpCounter++;
-                    System.out.println("midairJumpTimer = " + midairJumpTimer);
                     midairJumpTimer = midairJumpDelay;
                 }
             }
@@ -985,6 +986,23 @@ public abstract class SlopeCharacter extends Entity {
     @Override
     public void beginContact(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (other instanceof Bounds) {
+            var manifold = contact.getWorldManifold();
+            float normalAngle = manifold.getNormal().angleDeg();
+            float fixtureAngle = ((BoundsData) otherFixture.getUserData()).angle;
+            var bounds = (Bounds) other;
+            
+            var hittingHead = falling && !Utils.isEqual360(normalAngle, 90, maxSlideAngle);
+            if (hittingHead && ((Bounds) other).canPassThroughBottom) {
+                if (fixture == torsoFixture) {
+                    torsoPassThroughBounds.add(bounds);
+                    System.out.println("torso add " + bounds);
+                }
+                else if (fixture == footFixture) {
+                    footPassThroughBounds.add(bounds);
+                    System.out.println("foot add " + bounds);
+                }
+            }
+            
             if (fixture == footFixture && Utils.isEqual360(((BoundsData)otherFixture.getUserData()).angle, 90, maxSlideAngle)) {
                 if (clearLastTouchedGroundFixtures) {
                     lastTouchedGroundFixtures.clear();
@@ -999,9 +1017,18 @@ public abstract class SlopeCharacter extends Entity {
     @Override
     public void preSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (other instanceof Bounds) {
+            var bounds = (Bounds) other;
             var manifold = contact.getWorldManifold();
             float normalAngle = manifold.getNormal().angleDeg();
-            float fixtureAngle = ((BoundsData) otherFixture.getUserData()).angle;
+            var otherFixtureData = ((BoundsData) otherFixture.getUserData());
+            float fixtureAngle = otherFixtureData.angle;
+            float nextFixtureAngle = ((BoundsData)otherFixtureData.nextFixture.getUserData()).angle;
+            float previousFixtureAngle = ((BoundsData)otherFixtureData.previousFixture.getUserData()).angle;
+            
+            if (torsoPassThroughBounds.contains(bounds) || footPassThroughBounds.contains(bounds)) {
+                contact.setEnabled(false);
+                return;
+            }
             
             if (fixture == footFixture) {
                 canWalkOnSlope = false;
@@ -1035,8 +1062,16 @@ public abstract class SlopeCharacter extends Entity {
     @Override
     public void endContact(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (other instanceof Bounds) {
+            var bounds = (Bounds) other;
+            
+            
             if (fixture == footFixture) {
                 touchedGroundFixtures.remove(otherFixture);
+                footPassThroughBounds.remove(bounds);
+                System.out.println("foot remove " + bounds);
+            } else if (fixture == torsoFixture) {
+                torsoPassThroughBounds.remove(bounds);
+                System.out.println("torso remove " + bounds);
             }
         }
     }

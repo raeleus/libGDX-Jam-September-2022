@@ -10,6 +10,7 @@ import static com.ray3k.template.Core.*;
 public class Bounds extends Entity {
     public float[] points;
     public int edgeCount;
+    public boolean canPassThroughBottom;
     
     public Bounds(float[] points) {
         this.points = points;
@@ -33,6 +34,8 @@ public class Bounds extends Entity {
         Fixture firstFixture = null;
         for (int i = 0; i + 1 < points.length; i += 2) {
             EdgeShape edgeShape = new EdgeShape();
+            edgeShape.setHasVertex0(true);
+            edgeShape.setHasVertex3(true);
     
             float nextX, nextY;
             if (i + 3 < points.length) {

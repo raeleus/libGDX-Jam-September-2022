@@ -327,6 +327,16 @@ public class Utils {
         return isEqual360(a, b, MathUtils.FLOAT_ROUNDING_ERROR);
     }
     
+    public static boolean degInRange(float angle, float start, float end) {
+        angle %= 360;
+        start %= 360;
+        end %= 360;
+        
+        end = (end - start) < 0.0f ? end - start + 360.0f : end - start;
+        angle = (angle - start) < 0.0f ? angle - start + 360.0f : angle - start;
+        return (angle < end);
+    }
+    
     public static boolean rayOverlapRectangle(float x, float y, float direction, Rectangle rectangle, Vector3 intersection) {
         rectToBoundingBox(rectangle, bboxTemp);
         
