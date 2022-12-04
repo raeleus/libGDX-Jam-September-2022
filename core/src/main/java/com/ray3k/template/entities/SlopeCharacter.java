@@ -7,6 +7,7 @@ import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
 import com.badlogic.gdx.physics.box2d.joints.RevoluteJoint;
 import com.badlogic.gdx.physics.box2d.joints.RevoluteJointDef;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.ray3k.template.*;
 import com.ray3k.template.entities.Bounds.*;
@@ -484,8 +485,8 @@ public abstract class SlopeCharacter extends Entity {
     private boolean inputWallClimbDown;
     private boolean inputSwing;
     private boolean inputSwingJustPressed;
-    private final ObjectSet<Bounds> torsoPassThroughBounds = new ObjectSet<>();
-    private final ObjectSet<Bounds> footPassThroughBounds = new ObjectSet<>();
+    private final Array<Fixture> torsoPassThroughFixtures = new Array<>();
+    private final Array<Fixture> footPassThroughFixtures = new Array<>();
     /**
      * Counts down continuously and is reset when the player begins to fall. Used to compare against coyoteTime.
      */
@@ -616,8 +617,8 @@ public abstract class SlopeCharacter extends Entity {
         GameScreen.statsLabel.setText("Movement Mode: " + movementMode +
                 "\nGrounded: " + grounded +
                 "\nFalling: " + falling +
-                "\nSwing angle: " + swingAngle +
-                "\nWall Jumping: " + wallJumping +
+                "\nTorso count: " + torsoPassThroughFixtures.size +
+                "\nFoot count: " + footPassThroughFixtures.size +
                 "\nLateral Speed: " + lateralSpeed +
                 "\nGround Angle: " + groundAngle +
                 "\nTouching Wall: " + touchingWall +
@@ -994,12 +995,14 @@ public abstract class SlopeCharacter extends Entity {
             var hittingHead = falling && !Utils.isEqual360(normalAngle, 90, maxSlideAngle);
             if (hittingHead && ((Bounds) other).canPassThroughBottom) {
                 if (fixture == torsoFixture) {
-                    torsoPassThroughBounds.add(bounds);
-                    System.out.println("torso add " + bounds);
+                    torsoPassThroughFixtures.add(otherFixture);
+                    contact.setEnabled(false);
+                    return;
                 }
                 else if (fixture == footFixture) {
-                    footPassThroughBounds.add(bounds);
-                    System.out.println("foot add " + bounds);
+                    footPassThroughFixtures.add(otherFixture);
+                    contact.setEnabled(false);
+                    return;
                 }
             }
             
@@ -1014,6 +1017,23 @@ public abstract class SlopeCharacter extends Entity {
         }
     }
     
+    private boolean checkContactEnabledPassThrough(Bounds bounds) {
+        if (!bounds.canPassThroughBottom) return true;
+        var iter = torsoPassThroughFixtures.iterator();
+        while (iter.hasNext()) {
+            var fixture = iter.next();
+            if (bounds == fixture.getBody().getUserData()) return false;
+        }
+        
+        iter = footPassThroughFixtures.iterator();
+        while (iter.hasNext()) {
+            var fixture = iter.next();
+            if (bounds == fixture.getBody().getUserData()) return false;
+        }
+        
+        return true;
+    }
+    
     @Override
     public void preSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (other instanceof Bounds) {
@@ -1025,7 +1045,7 @@ public abstract class SlopeCharacter extends Entity {
             float nextFixtureAngle = ((BoundsData)otherFixtureData.nextFixture.getUserData()).angle;
             float previousFixtureAngle = ((BoundsData)otherFixtureData.previousFixture.getUserData()).angle;
             
-            if (torsoPassThroughBounds.contains(bounds) || footPassThroughBounds.contains(bounds)) {
+            if (!checkContactEnabledPassThrough(bounds)) {
                 contact.setEnabled(false);
                 return;
             }
@@ -1063,28 +1083,40 @@ public abstract class SlopeCharacter extends Entity {
     public void endContact(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (other instanceof Bounds) {
             var bounds = (Bounds) other;
-            
+    
+            if (!checkContactEnabledPassThrough(bounds)) {
+                if (fixture == footFixture) {
+                    footPassThroughFixtures.removeValue(otherFixture, true);
+                    return;
+                } else if (fixture == torsoFixture) {
+                    torsoPassThroughFixtures.removeValue(otherFixture, true);
+                    return;
+                }
+            }
             
             if (fixture == footFixture) {
                 touchedGroundFixtures.remove(otherFixture);
-                footPassThroughBounds.remove(bounds);
-                System.out.println("foot remove " + bounds);
-            } else if (fixture == torsoFixture) {
-                torsoPassThroughBounds.remove(bounds);
-                System.out.println("torso remove " + bounds);
             }
         }
     }
     
     @Override
     public void postSolve(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
-        if (fixture == footFixture && other instanceof Bounds) {
-            float angle = contact.getWorldManifold().getNormal().angleDeg();
-            if (Utils.isEqual360(angle, 90, maxSlideAngle)) contactAngle = angle;
+        if (other instanceof Bounds) {
+            var bounds = (Bounds) other;
             
-            if (!canSlideOnSlope || !canWalkOnSlope) {
-                groundAngle = ((BoundsData) otherFixture.getUserData()).angle;
-                slopeCheck();
+            if (!checkContactEnabledPassThrough(bounds)) {
+                return;
+            }
+    
+            if (fixture == footFixture) {
+                float angle = contact.getWorldManifold().getNormal().angleDeg();
+                if (Utils.isEqual360(angle, 90, maxSlideAngle)) contactAngle = angle;
+        
+                if (!canSlideOnSlope || !canWalkOnSlope) {
+                    groundAngle = ((BoundsData) otherFixture.getUserData()).angle;
+                    slopeCheck();
+                }
             }
         }
     }
