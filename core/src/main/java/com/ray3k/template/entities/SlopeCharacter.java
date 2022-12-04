@@ -68,7 +68,7 @@ public abstract class SlopeCharacter extends Entity {
     /**
      * The velocity used to correct the position of the character above the ground when it's floating above a slope. This usually only occurs when going down hill.
      */
-    public float slopeStickForce = 500;
+    public float slopeStickForce = 300;
     /**
      * The additional time the character is allowed to jump after falling off a ledge
      */
@@ -485,8 +485,7 @@ public abstract class SlopeCharacter extends Entity {
     private boolean inputWallClimbDown;
     private boolean inputSwing;
     private boolean inputSwingJustPressed;
-    private final Array<Fixture> torsoPassThroughFixtures = new Array<>();
-    private final Array<Fixture> footPassThroughFixtures = new Array<>();
+    private final Array<Fixture> passThroughFixtures = new Array<>();
     /**
      * Counts down continuously and is reset when the player begins to fall. Used to compare against coyoteTime.
      */
@@ -617,8 +616,7 @@ public abstract class SlopeCharacter extends Entity {
         GameScreen.statsLabel.setText("Movement Mode: " + movementMode +
                 "\nGrounded: " + grounded +
                 "\nFalling: " + falling +
-                "\nTorso count: " + torsoPassThroughFixtures.size +
-                "\nFoot count: " + footPassThroughFixtures.size +
+                "\nPassthrough count: " + passThroughFixtures.size +
                 "\nLateral Speed: " + lateralSpeed +
                 "\nGround Angle: " + groundAngle +
                 "\nTouching Wall: " + touchingWall +
@@ -727,7 +725,6 @@ public abstract class SlopeCharacter extends Entity {
         previousSwinging = swinging;
         swinging = inputSwing && falling && !touchingWall;
         if (previousSwinging && swinging && allowSwingTerminationAtApex && swingAnchorOrigin != null && !MathUtils.isZero(previousSwingDelta)) {
-            System.out.println("delta " + swingDelta + " previous " + previousSwingDelta);
             if (Math.signum(swingDelta) != Math.signum(previousSwingDelta)) swinging = false;
         }
         
@@ -992,17 +989,16 @@ public abstract class SlopeCharacter extends Entity {
             float fixtureAngle = ((BoundsData) otherFixture.getUserData()).angle;
             var bounds = (Bounds) other;
             
-            var hittingHead = falling && !Utils.isEqual360(normalAngle, 90, maxSlideAngle);
-            if (hittingHead && ((Bounds) other).canPassThroughBottom) {
-                if (fixture == torsoFixture) {
-                    torsoPassThroughFixtures.add(otherFixture);
-                    contact.setEnabled(false);
-                    return;
-                }
-                else if (fixture == footFixture) {
-                    footPassThroughFixtures.add(otherFixture);
-                    contact.setEnabled(false);
-                    return;
+            if (bounds.canPassThroughBottom) {
+                var alreadyContacting = !checkContactEnabledPassThrough(bounds);
+                var hittingHead = falling && !Utils.isEqual360(normalAngle, 90, maxSlideAngle);
+                var badAngle = Utils.isEqual360(normalAngle, fixtureAngle + 180, 90);
+                if (alreadyContacting || hittingHead || badAngle) {
+                    passThroughFixtures.add(otherFixture);
+                    if (fixture == torsoFixture || fixture == footFixture) {
+                        contact.setEnabled(false);
+                        return;
+                    }
                 }
             }
             
@@ -1019,13 +1015,7 @@ public abstract class SlopeCharacter extends Entity {
     
     private boolean checkContactEnabledPassThrough(Bounds bounds) {
         if (!bounds.canPassThroughBottom) return true;
-        var iter = torsoPassThroughFixtures.iterator();
-        while (iter.hasNext()) {
-            var fixture = iter.next();
-            if (bounds == fixture.getBody().getUserData()) return false;
-        }
-        
-        iter = footPassThroughFixtures.iterator();
+        var iter = passThroughFixtures.iterator();
         while (iter.hasNext()) {
             var fixture = iter.next();
             if (bounds == fixture.getBody().getUserData()) return false;
@@ -1085,13 +1075,8 @@ public abstract class SlopeCharacter extends Entity {
             var bounds = (Bounds) other;
     
             if (!checkContactEnabledPassThrough(bounds)) {
-                if (fixture == footFixture) {
-                    footPassThroughFixtures.removeValue(otherFixture, true);
-                    return;
-                } else if (fixture == torsoFixture) {
-                    torsoPassThroughFixtures.removeValue(otherFixture, true);
-                    return;
-                }
+                passThroughFixtures.removeValue(otherFixture, true);
+                return;
             }
             
             if (fixture == footFixture) {
