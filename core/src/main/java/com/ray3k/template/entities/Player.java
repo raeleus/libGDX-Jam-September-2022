@@ -9,6 +9,12 @@ import static com.ray3k.template.Resources.SpineZebra.*;
 public class Player extends SlopeCharacter {
     public Player() {
         super(0, 25, 25, 100);
+    }
+    
+    @Override
+    public void create() {
+        super.create();
+    
         showDebug = true;
         depth = DEPTH_PLAYER;
         animationData.setDefaultMix(.25f);
@@ -23,6 +29,9 @@ public class Player extends SlopeCharacter {
         midairJumps = -1;
         swingImpulse = 0;
         swingCharacterAnchorOffsetY = 50;
+        animationState.setAnimation(0, animationBlink, true);
+        animationState.setAnimation(1, animationTail, true);
+        animationState.setAnimation(2, animationJumpFall, true);
     }
     
     @Override
