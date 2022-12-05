@@ -209,7 +209,7 @@ public class GameScreen extends JamScreen {
                     }
                     points[points.length - 2] = p2m(x);
                     points[points.length - 1] = p2m(y);
-                    var bounds = new Bounds(points);
+                    var bounds = new Bounds(points, false);
                     entityController.add(bounds);
                     bounds.teleport(0, 0);
                     break;
@@ -222,8 +222,21 @@ public class GameScreen extends JamScreen {
                     }
                     points[points.length - 2] = p2m(x);
                     points[points.length - 1] = p2m(y);
-                    bounds = new Bounds(points);
+                    bounds = new Bounds(points, false);
                     bounds.canPassThroughBottom = true;
+                    entityController.add(bounds);
+                    bounds.teleport(0, 0);
+                    break;
+                case "bounds_move_vertical":
+                    points = new float[(nodes.size + 1) * 2];
+                    for (int i = 0; i < nodes.size; i++) {
+                        var node = nodes.get(i);
+                        points[i*2] = p2m(node.x);
+                        points[i*2 + 1] = p2m(node.y);
+                    }
+                    points[points.length - 2] = p2m(x);
+                    points[points.length - 1] = p2m(y);
+                    bounds = new Bounds(points, true);
                     entityController.add(bounds);
                     bounds.teleport(0, 0);
                     break;

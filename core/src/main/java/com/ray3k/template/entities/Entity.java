@@ -1,6 +1,5 @@
 package com.ray3k.template.entities;
 
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.*;
@@ -36,7 +35,7 @@ public abstract class Entity {
     public float depth;
     public boolean sleepable = true;
     public boolean sleeping;
-    public boolean bodyVelocityControl = true;
+    public boolean controlBodyVelocity = true;
     
     public abstract void create();
     public abstract void actBefore(float delta);

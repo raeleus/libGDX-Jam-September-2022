@@ -11,9 +11,11 @@ public class Bounds extends Entity {
     public float[] points;
     public int edgeCount;
     public boolean canPassThroughBottom;
+    public boolean kinematic;
     
-    public Bounds(float[] points) {
+    public Bounds(float[] points, boolean kinematic) {
         this.points = points;
+        this.kinematic = kinematic;
     }
     
     public static Vector2 temp1 = new Vector2();
@@ -22,7 +24,7 @@ public class Bounds extends Entity {
     @Override
     public void create() {
         BodyDef bodyDef = new BodyDef();
-        bodyDef.type = BodyType.StaticBody;
+        bodyDef.type = kinematic ? BodyType.KinematicBody : BodyType.StaticBody;
         bodyDef.position.set(x, y);
         bodyDef.fixedRotation = true;
     
@@ -104,7 +106,7 @@ public class Bounds extends Entity {
     
     @Override
     public void act(float delta) {
-    
+        if (kinematic) deltaX = -10;
     }
     
     @Override

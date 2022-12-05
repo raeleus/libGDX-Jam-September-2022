@@ -200,6 +200,20 @@ public abstract class SlopeCharacter extends Entity {
      */
     public float wallClimbAcceleration = 5000;
     /**
+     * How fast movement is decelerated while clinging to a wall, there is no climb input, and allowClimbWalls is true.
+     * The actual deceleration is on a curve where maximum deceleration is experienced when closer to 0.
+     * @see SlopeCharacter#allowClimbWalls
+     * @see SlopeCharacter#wallClimbMinDeceleration
+     */
+    public float wallClimbDeceleration = 5000;
+    /**
+     * The minimum deceleration when climbing a wall. This is implemented when there is no climb input and allowClimbWalls
+     * is true. This is implemented when vertical movement is close to wallClimbMaxSpeed.
+     * @see SlopeCharacter#allowClimbWalls
+     * @see SlopeCharacter#wallClimbMaxSpeed
+     */
+    public float wallClimbMinDeceleration = 1000;
+    /**
      * The length of the ray used to check if the player is connected to a wall on the left or right.
      */
     public float wallRayDistance = 20;
@@ -529,6 +543,13 @@ public abstract class SlopeCharacter extends Entity {
      * @see SlopeCharacter#midairJumps
      */
     public int midairJumpCounter;
+    /**
+     * A list of fixtures that this character is touching which are attached to a Bounds that has kinematic set to true.
+     * If this list is larger than 0, the character will match the movement speed of the first Bounds in this list. All
+     * movement will be relative to this platform unless the character jumps or releases from a wall cling. Releasing
+     * from a wall cling in particular will transfer the momentum into falling horizontal movement.
+     */
+    private final ObjectSet<Fixture> movingPlatformFixtures = new ObjectSet<>();
     
     public SlopeCharacter(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
         this.footOffsetX = footOffsetX;
@@ -584,6 +605,8 @@ public abstract class SlopeCharacter extends Entity {
                             contactAngle = normal.angleDeg();
                             groundAngle = ((BoundsData) fixture.getUserData()).angle;
                             grounded = true;
+                            var bounds = (Bounds) fixture.getBody().getUserData();
+                            if (bounds.kinematic) movingPlatformFixtures.add(fixture);
                             return 0;
                         }
                     }
@@ -594,6 +617,7 @@ public abstract class SlopeCharacter extends Entity {
             if (!grounded) {
                 falling = true;
                 if (canWalkOnSlope || allowJumpingWhileSliding) coyoteTimer = coyoteTime;
+                movingPlatformFixtures.clear();
             }
         }
         slopeCheck();
@@ -635,6 +659,7 @@ public abstract class SlopeCharacter extends Entity {
         handleMovement(delta);
     
         GameScreen.statsLabel.setText("Movement Mode: " + movementMode +
+                "\nMoving Platform: " + movingPlatformFixtures.size +
                 "\nTouchedGroundFixtures: " + touchedGroundFixtures.size +
                 "\nGrounded: " + grounded +
                 "\nFalling: " + falling +
@@ -643,8 +668,8 @@ public abstract class SlopeCharacter extends Entity {
                 "\nGround Angle: " + groundAngle +
                 "\nTouching Wall: " + touchingWall +
                 "\nCoyote Timer: " + coyoteTimer +
-                "\nCan Jump: " + canJump +
-                "\ndeltaX: " + deltaX);
+                "\ndeltaX: " + deltaX +
+                "\ndeltaY: " + deltaY);
     }
     
     private void slopeCheck() {
@@ -740,12 +765,25 @@ public abstract class SlopeCharacter extends Entity {
                     clingingToWall = false;
                     var rayX = p2m(x + footRayOffsetX + (clingingToRight ? footRadius : -footRadius));
                     var rayY = p2m(y + footRayOffsetY + wallClimbRayYoffset);
+                    //raycast to one side to check for a wall
                     world.rayCast((fixture, point, normal, fraction) -> {
                         if (!(fixture.getBody().getUserData() instanceof Bounds)) return -1;
                         clingingToWall = true;
+                        
+                        //attach if touching a moving platform
+                        var bounds = (Bounds) fixture.getBody().getUserData();
+                        if (bounds.kinematic) movingPlatformFixtures.add(fixture);
                         return 0;
                     }, rayX, rayY, rayX + p2m(clingingToRight ? wallRayDistance : -wallRayDistance), rayY);
                 }
+            }
+        }
+        
+        //Clear attachment to a moving platform if no longer clinging to the side
+        if (lastClingingToWall && !clingingToWall) {
+            if (movingPlatformFixtures.size > 0) {
+                movingPlatformFixtures.clear();
+                lateralSpeed = deltaX;
             }
         }
         
@@ -828,6 +866,7 @@ public abstract class SlopeCharacter extends Entity {
                 deltaY = Utils.throttledAcceleration(deltaY, goUp * wallClimbMaxSpeed, goUp * wallClimbAcceleration * delta, false);
                 gravityY = 0;
             } else {
+                if (allowClimbWalls) deltaY = Utils.throttledDeceleration(deltaY, wallClimbMaxSpeed, wallClimbMinDeceleration, wallClimbDeceleration);
                 gravityY = wallSlideAcceleration;
                 var maxSpeed = -Math.abs(wallSlideMaxSpeed);
                 if (deltaY > 0) deltaY = Utils.approach(deltaY, 0, wallClimbAcceleration * delta);
@@ -878,7 +917,7 @@ public abstract class SlopeCharacter extends Entity {
                 revoluteJointDef.localAnchorB.set(p2m(swingCharacterAnchorOffsetX), p2m(swingCharacterAnchorOffsetY));
                 world.createJoint(revoluteJointDef);
                 
-                bodyVelocityControl = false;
+                controlBodyVelocity = false;
                 temp1.set(p2m(swingImpulse), 0);
                 temp1.rotateDeg(Utils.pointDirection(anchorCharacterX, anchorCharacterY, swingTargetX, swingTargetY) + (anchorCharacterX < swingTargetX ? -90 : 90));
                 if (!swingMaintainVelocity) body.setLinearVelocity(temp1.x, temp1.y);
@@ -939,7 +978,7 @@ public abstract class SlopeCharacter extends Entity {
             world.destroyBody(swingAnchorCharacter);
             swingAnchorCharacter = null;
             
-            bodyVelocityControl = true;
+            controlBodyVelocity = true;
             deltaX = m2p(body.getLinearVelocity().x);
             deltaY = m2p(body.getLinearVelocity().y);
             lateralSpeed = deltaX;
@@ -958,6 +997,7 @@ public abstract class SlopeCharacter extends Entity {
             canJump = false;
             coyoteTimer = 0;
             deltaY = wallClimbLedgeJumpSpeed;
+            movingPlatformFixtures.clear();
         }
     
         //if initiating a wall jump
@@ -969,6 +1009,7 @@ public abstract class SlopeCharacter extends Entity {
             canJump = false;
             coyoteTimer = 0;
             inputJumpJustPressed = 0;
+            movingPlatformFixtures.clear();
             setMotion(wallJumpSpeed, wallToRight ? 180 - wallJumpAngle : wallJumpAngle);
         }
         
@@ -979,12 +1020,20 @@ public abstract class SlopeCharacter extends Entity {
             canJump = false;
             coyoteTimer = 0;
             inputJumpJustPressed = 0;
+            movingPlatformFixtures.clear();
             if (inputLeft || inputRight) deltaX = lateralSpeed;
             deltaY = !canMidairJump ? jumpSpeed : midairJumpSpeed;
             if (canMidairJump) {
                 midairJumpCounter++;
                 midairJumpTimer = midairJumpDelay;
             }
+        }
+        
+        //match the speed of the first attached moving platform.
+        if (movingPlatformFixtures.size > 0) {
+            var platform = (Bounds) movingPlatformFixtures.first().getBody().getUserData();
+            deltaX += platform.deltaX;
+            deltaY += platform.deltaY;
         }
     }
     
@@ -1055,6 +1104,11 @@ public abstract class SlopeCharacter extends Entity {
                 touchedGroundFixtures.add(otherFixture);
                 lastTouchedGroundFixtures.add(otherFixture);
             }
+            
+            //add the fixture to the list of moving platforms if the bounds is kinematic
+            if (fixture == footFixture && bounds.kinematic) {
+                movingPlatformFixtures.add(otherFixture);
+            }
         }
     }
     
@@ -1077,8 +1131,6 @@ public abstract class SlopeCharacter extends Entity {
             float normalAngle = manifold.getNormal().angleDeg();
             var otherFixtureData = ((BoundsData) otherFixture.getUserData());
             float fixtureAngle = otherFixtureData.angle;
-            float nextFixtureAngle = ((BoundsData)otherFixtureData.nextFixture.getUserData()).angle;
-            float previousFixtureAngle = ((BoundsData)otherFixtureData.previousFixture.getUserData()).angle;
             
             if (!checkContactEnabledPassThrough(bounds)) {
                 contact.setEnabled(false);
@@ -1125,6 +1177,7 @@ public abstract class SlopeCharacter extends Entity {
             
             if (fixture == footFixture) {
                 touchedGroundFixtures.remove(otherFixture);
+                movingPlatformFixtures.remove(otherFixture);
             }
         }
     }
