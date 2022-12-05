@@ -614,6 +614,7 @@ public abstract class SlopeCharacter extends Entity {
         handleMovement(delta);
     
         GameScreen.statsLabel.setText("Movement Mode: " + movementMode +
+                "\nTouchedGroundFixtures: " + touchedGroundFixtures.size +
                 "\nGrounded: " + grounded +
                 "\nFalling: " + falling +
                 "\nPassthrough count: " + passThroughFixtures.size +
@@ -1076,7 +1077,6 @@ public abstract class SlopeCharacter extends Entity {
     
             if (!checkContactEnabledPassThrough(bounds)) {
                 passThroughFixtures.removeValue(otherFixture, true);
-                return;
             }
             
             if (fixture == footFixture) {
