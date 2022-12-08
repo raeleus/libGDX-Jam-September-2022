@@ -18,7 +18,7 @@ import static com.ray3k.template.entities.SlopeCharacter.MovementMode.*;
 
 public abstract class SlopeCharacter extends Entity {
     public enum MovementMode {
-        WALKING, SLIDING, FALLING, WALL_CLINGING
+        WALKING, SLIDING, FALLING, WALL_CLINGING, SWINGING
     }
     private final static Vector2 temp1 = new Vector2();
     private final static Vector2 temp2 = new Vector2();
@@ -141,6 +141,11 @@ public abstract class SlopeCharacter extends Entity {
      * or right input. The actual deceleration is on a curve where maximum deceleration is experienced when closer to 0.
      */
     public float lateralStopDeceleration = 4000;
+    /**
+     * How close the player has to be to a cliff edge to trigger the eventCliffEdge method.
+     * @see SlopeCharacter#eventCliffEdge(float, boolean)
+     */
+    public float walkCliffEdgeDistance = 20;
     
     /**
      * The maximum speed that the character has when sliding down a slope.
@@ -341,6 +346,10 @@ public abstract class SlopeCharacter extends Entity {
      */
     public boolean falling;
     /**
+     * True if the character just landed from a fall.
+     */
+    public boolean justLanded;
+    /**
      * True if the character initiated a jump.
      */
     public boolean jumping;
@@ -420,6 +429,10 @@ public abstract class SlopeCharacter extends Entity {
      * The angle of the last touched wall.
      */
     private float wallAngle;
+    /**
+     * The angle of the last touched ceiling.
+     */
+    private float ceilingAngle;
     /**
      * The ground fixtures that were touched in this frame.
      */
@@ -550,6 +563,13 @@ public abstract class SlopeCharacter extends Entity {
      * from a wall cling in particular will transfer the momentum into falling horizontal movement.
      */
     private final ObjectSet<Fixture> movingPlatformFixtures = new ObjectSet<>();
+    /**
+     * The fixture just below the character as detected via ray cast.
+     * @see SlopeCharacter#footRayDistance
+     * @see SlopeCharacter#footRayOffsetX
+     * @see SlopeCharacter#footRayOffsetY
+     */
+    private Fixture rayCastedGroundFixture;
     
     public SlopeCharacter(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
         this.footOffsetX = footOffsetX;
@@ -581,46 +601,17 @@ public abstract class SlopeCharacter extends Entity {
         touchingWall = false;
         hitHead = false;
         clearLastTouchedGroundFixtures = true;
+        justLanded = false;
+        rayCastedGroundFixture = null;
     }
     
     @Override
     public void act(float delta) {
         camera.position.set(getBboxCenterX(), getBboxCenterY(), 0);
         
-        grounded = touchedGroundFixtures.size > 0;
+        checkIfGrounded();
         
-        //If the character is not physically touching the ground, shoot a ray down to determine if he should be.
-        if (!grounded && !falling) {
-            world.rayCast((fixture, point, normal, fraction) -> {
-                if (fixture.getBody().getUserData() instanceof Bounds) {
-                    var data = (BoundsData) fixture.getUserData();
-                    for (var lastTouchedGroundFixture : lastTouchedGroundFixtures) {
-                        //If there are any fixtures between the lastTouchedGroundFixture and this raycasted fixture that
-                        // is a wall, do not count this as ground. That wall is a cliff and the character has walked
-                        // over the edge.
-                        if (data.checkFixturesBetween(lastTouchedGroundFixture, fixture1 -> {
-                            var angle = ((BoundsData) fixture1.getUserData()).angle;
-                            return Utils.isEqual360(angle, 90, maxSlideAngle);
-                        })) {
-                            contactAngle = normal.angleDeg();
-                            groundAngle = ((BoundsData) fixture.getUserData()).angle;
-                            grounded = true;
-                            var bounds = (Bounds) fixture.getBody().getUserData();
-                            if (bounds.kinematic) movingPlatformFixtures.add(fixture);
-                            return 0;
-                        }
-                    }
-                }
-                return 1;
-            }, p2m(x + footRayOffsetX), p2m(y + footRayOffsetY), p2m(x + footRayOffsetX), p2m(y + footRayOffsetY - footRayDistance));
-
-            if (!grounded) {
-                falling = true;
-                if (canWalkOnSlope || allowJumpingWhileSliding) coyoteTimer = coyoteTime;
-                movingPlatformFixtures.clear();
-            }
-        }
-        slopeCheck();
+        checkIfOnCliff(delta);
         
         inputLeft = false;
         inputRight = false;
@@ -670,6 +661,115 @@ public abstract class SlopeCharacter extends Entity {
                 "\nCoyote Timer: " + coyoteTimer +
                 "\ndeltaX: " + deltaX +
                 "\ndeltaY: " + deltaY);
+    }
+    
+    /**
+     * Checks if the player is grounded via physically touching a ground fixture. If not, check via ray cast. This is
+     * necessary because of steep slopes and to check if the player is on a cliff edge.
+     */
+    private void checkIfGrounded() {
+        grounded = touchedGroundFixtures.size > 0;
+    
+        boolean needToCheckForRayCastedGroundFixture = true;
+        //If the character is not physically touching the ground, shoot a ray down to determine if he should be.
+        if (!grounded && !falling) {
+            needToCheckForRayCastedGroundFixture = false;
+            world.rayCast((fixture, point, normal, fraction) -> {
+                if (fixture.getBody().getUserData() instanceof Bounds) {
+                    var data = (BoundsData) fixture.getUserData();
+                    for (var lastTouchedGroundFixture : lastTouchedGroundFixtures) {
+                        //If there are any fixtures between the lastTouchedGroundFixture and this raycasted fixture that
+                        // is a wall, do not count this as ground. That wall is a cliff and the character has walked
+                        // over the edge.
+                        if (data.checkFixturesBetween(lastTouchedGroundFixture, fixture1 -> {
+                            var angle = ((BoundsData) fixture1.getUserData()).angle;
+                            return Utils.isEqual360(angle, 90, maxSlideAngle);
+                        })) {
+                            contactAngle = normal.angleDeg();
+                            groundAngle = ((BoundsData) fixture.getUserData()).angle;
+                            grounded = true;
+                            rayCastedGroundFixture = fixture;
+                            var bounds = (Bounds) fixture.getBody().getUserData();
+                            if (bounds.kinematic) movingPlatformFixtures.add(fixture);
+                            return 0;
+                        }
+                    }
+                }
+                return 1;
+            }, p2m(x + footRayOffsetX), p2m(y + footRayOffsetY), p2m(x + footRayOffsetX), p2m(y + footRayOffsetY - footRayDistance));
+        
+            if (!grounded) {
+                falling = true;
+                if (canWalkOnSlope || allowJumpingWhileSliding) coyoteTimer = coyoteTime;
+                movingPlatformFixtures.clear();
+            }
+        }
+        slopeCheck();
+    
+        //if there hasn't already been a check for ground via ray cast, do a ray cast to find the fixture directly below
+        if (needToCheckForRayCastedGroundFixture) {
+            world.rayCast((fixture, point, normal, fraction) -> {
+                if (fixture.getBody().getUserData() instanceof Bounds) {
+                    var data = (BoundsData) fixture.getUserData();
+                    for (var lastTouchedGroundFixture : lastTouchedGroundFixtures) {
+                        //If there are any fixtures between the lastTouchedGroundFixture and this raycasted fixture that
+                        // is a wall, do not count this as ground. That wall is a cliff and the character has walked
+                        // over the edge.
+                        if (data.checkFixturesBetween(lastTouchedGroundFixture, fixture1 -> {
+                            var angle = ((BoundsData) fixture1.getUserData()).angle;
+                            return Utils.isEqual360(angle, 90, maxSlideAngle);
+                        })) {
+                            rayCastedGroundFixture = fixture;
+                            return 0;
+                        }
+                    }
+                }
+                return 1;
+            }, p2m(x + footRayOffsetX), p2m(y + footRayOffsetY), p2m(x + footRayOffsetX), p2m(y + footRayOffsetY - footRayDistance));
+        }
+    }
+    
+    private void checkIfOnCliff(float delta) {
+        for (var fixture : touchedGroundFixtures) {
+            var boundsData = (BoundsData) fixture.getUserData();
+            var edge = (EdgeShape) fixture.getShape();
+            edge.getVertex1(temp1);
+            temp1.x = m2p(temp1.x);
+            temp1.y = m2p(temp1.y);
+            edge.getVertex2(temp2);
+            temp2.x = m2p(temp2.x);
+            temp2.y = m2p(temp2.y);
+        
+            if (temp2.x < temp1.x) {
+                var x = temp1.x;
+                var y = temp1.y;
+                temp1.x = temp2.x;
+                temp1.y = temp2.y;
+                temp2.x = x;
+                temp2.y = y;
+            }
+            var closeToLeftPoint = Utils.pointDistance(x, y, temp1.x, temp1.y) < walkCliffEdgeDistance;
+            var closeToRightPoint = Utils.pointDistance(x, y, temp2.x, temp2.y) < walkCliffEdgeDistance;
+            var previousAngle = ((BoundsData) boundsData.previousFixture.getUserData()).angle;
+            var nextAngle = ((BoundsData) boundsData.nextFixture.getUserData()).angle;
+            if (rayCastedGroundFixture != null) {
+                if (closeToLeftPoint && !Utils.isEqual360(previousAngle, 90, maxSlideAngle)) {
+                    eventCliffEdge(delta, false);
+                    break;
+                } else if (closeToRightPoint && !Utils.isEqual360(nextAngle, 90, maxSlideAngle)) {
+                    eventCliffEdge(delta, true);
+                    break;
+                }
+            } else {
+                if (x < temp1.x && !Utils.isEqual360(previousAngle, 90, maxSlideAngle)) {
+                    eventCliffEdge(delta, false);
+                    break;
+                } else if (x > temp2.x && !Utils.isEqual360(nextAngle, 90, maxSlideAngle)) {
+                    eventCliffEdge(delta, true);
+                    break;
+                }
+            }
+        }
     }
     
     private void slopeCheck() {
@@ -748,6 +848,75 @@ public abstract class SlopeCharacter extends Entity {
     public abstract void handleControls();
     
     /**
+     * This event is called for every frame the character is grounded and left or right input is received. This is not
+     * called when the player is walkReversing.
+     * @param delta
+     * @param lateralSpeed
+     * @param groundAngle
+     * @see SlopeCharacter#eventWalkReversing(float, float, float)
+     */
+    public abstract void eventWalking(float delta, float lateralSpeed, float groundAngle);
+    
+    /**
+     * This event is called for every frame the character is grounded and has walking momentum, but is not applying left or
+     * right input.
+     * @param delta
+     * @param lateralSpeed
+     * @param groundAngle
+     */
+    public abstract void eventWalkStopping(float delta, float lateralSpeed, float groundAngle);
+    
+    /**
+     * This event is called once the player has come to a halt while grounded.
+     * @param delta
+     */
+    public abstract void eventWalkStop(float delta);
+    
+    /**
+     * This event is called every frame that the character is grounded and is calling an input that makes them move in the
+     * opposite direction of their momentum. This overrides the walking event.
+     * @param delta
+     * @param lateralSpeed
+     * @param groundAngle
+     * @see SlopeCharacter#eventWalking(float, float, float)
+     */
+    public abstract void eventWalkReversing(float delta, float lateralSpeed, float groundAngle);
+    
+    /**
+     * This event is called every frame when the character is calling an input that makes them walk up a slope that
+     * would typically make them slide down. Only called if allowWalkUpSlides is true.
+     * @param delta
+     * @param lateralSpeed
+     * @param groundAngle
+     * @see SlopeCharacter#allowWalkUpSlides
+     */
+    public abstract void eventWalkingSlide(float delta, float lateralSpeed, float groundAngle);
+    public abstract void eventWalkPushingWall(float delta, float wallAngle);
+    public abstract void eventCliffEdge(float delta, boolean right);
+    public abstract void eventTouchGroundFixture(Fixture fixture, float contactNormalAngle, Bounds bounds, BoundsData boundsData);
+    public abstract void eventSlideSlope(float delta, float lateralSpeed, float groundAngle, float slidingAngle);
+    public abstract void eventSlidePushWall(float delta, float wallAngle);
+    public abstract void eventJump(float delta);
+    public abstract void eventJumpReleased(float delta);
+    public abstract void eventJumpFromSlope(float delta);
+    public abstract void eventJumpMidair(float delta);
+    public abstract void eventHitHead(float delta, float ceilingAngle);
+    public abstract void eventFalling(float delta);
+    public abstract void eventFallingTouchingWall(float delta, float wallAngle);
+    public abstract void eventLand(float delta, float groundAngle);
+    public abstract void eventWallCling(float delta, float wallAngle);
+    public abstract void eventWallSliding(float delta, float wallAngle);
+    public abstract void eventWallClimbing(float delta, float wallAngle);
+    public abstract void eventWallClimbReachedTop(float delta);
+    public abstract void eventWallJump(float delta, float wallAngle);
+    public abstract void eventPassedThroughPlatform(Fixture fixture, float fixtureAngle, Bounds bounds, BoundsData boundsData);
+    public abstract void eventSwing(float delta, float swingAngle, float lateralSpeed);
+    public abstract void eventSwinging(float delta, float swingAngle, float lateralSpeed);
+    public abstract void eventSwingReleased(float delta, float swingAngle, float lateralSpeed, boolean automaticRelease);
+    public abstract void eventSwingCrashWall(float delta, float swingAngle, float lateralSpeed);
+    public abstract void eventSwingCrashGround(float delta, float swingAngle, float lateralSpeed);
+    
+    /**
      * Handles the movement of the character after collision detection has been applied.
      * @param delta
      */
@@ -787,11 +956,18 @@ public abstract class SlopeCharacter extends Entity {
             }
         }
         
-        //determine if the swing should be stopped if allowSwingTerminAtApex is activated.
+        //determine if the swing should be stopped if allowSwingTerminationAtApex is activated.
         previousSwinging = swinging;
         swinging = inputSwing && falling && !touchingWall;
         if (previousSwinging && swinging && allowSwingTerminationAtApex && swingAnchorOrigin != null && !MathUtils.isZero(previousSwingDelta)) {
-            if (Math.signum(swingDelta) != Math.signum(previousSwingDelta)) swinging = false;
+            if (Math.signum(swingDelta) != Math.signum(previousSwingDelta)) {
+                swinging = false;
+                eventSwingReleased(delta, swingAngle, lateralSpeed, true);
+            }
+        } else if (previousSwinging && !swinging) {
+            if (touchingWall) eventSwingCrashWall(delta, swingAngle, lateralSpeed);
+            else if (!falling) eventSwingCrashGround(delta, swingAngle, lateralSpeed);
+            else eventSwingReleased(delta, swingAngle, lateralSpeed, false);
         }
         
         //Walking
@@ -804,20 +980,38 @@ public abstract class SlopeCharacter extends Entity {
             }
             else setSpeed(0);
             
+            var accelerating = false;
+            var stopping = false;
+            var pushingWall = false;
             if (inputRight || inputLeft) {
                 var goRight = inputRight ? 1f : -1f;
-                var acceleration = Math.signum(lateralSpeed) == goRight ? lateralAcceleration : lateralDeceleration;
+                accelerating = Math.signum(lateralSpeed) == goRight;
+                var acceleration = accelerating ? lateralAcceleration : lateralDeceleration;
                 lateralSpeed = Utils.throttledAcceleration(lateralSpeed, goRight * lateralMaxSpeed, goRight * acceleration * delta, maintainExtraLateralMomentum);
             } else {
                 lateralSpeed = Utils.throttledDeceleration(lateralSpeed, lateralMaxSpeed, lateralStopMinDeceleration * delta, lateralStopDeceleration * delta);
+                stopping = true;
             }
             
             if (touchingWall) {
-                if (lateralSpeed > 0 && Utils.isEqual360(wallAngle, 180, 90)) lateralSpeed = 0;
-                else if (lateralSpeed < 0 && Utils.isEqual360(wallAngle, 0, 90)) lateralSpeed = 0;
+                if (lateralSpeed > 0 && Utils.isEqual360(wallAngle, 180, 90) || lateralSpeed < 0 && Utils.isEqual360(wallAngle, 0, 90)) {
+                    lateralSpeed = 0;
+                    pushingWall = true;
+                }
             }
             
             addMotion(lateralSpeed, contactAngle - 90f);
+    
+            if (justLanded) eventLand(delta, groundAngle);
+            
+            if (pushingWall) eventWalkPushingWall(delta, wallAngle);
+            else if (stopping) {
+                if (MathUtils.isZero(lateralSpeed)) eventWalkStop(delta);
+                else eventWalkStopping(delta, lateralSpeed, groundAngle);
+            } else {
+                if (accelerating) eventWalking(delta, lateralSpeed, groundAngle);
+                else eventWalkReversing(delta, lateralSpeed, groundAngle);
+            }
         }
         //Sliding
         else if (stickToGround && grounded && !canWalkOnSlope && canSlideOnSlope && !falling) {
@@ -830,13 +1024,14 @@ public abstract class SlopeCharacter extends Entity {
             else setSpeed(0);
     
             var slideDown = true;
-            if (allowWalkUpSlides) {
-                if (inputRight || inputLeft) {
-                    slideDown = false;
-                    var goRight = inputRight ? 1f : -1f;
-                    var acceleration = Math.signum(lateralSpeed) == goRight ? lateralAcceleration : lateralDeceleration;
-                    lateralSpeed = Utils.throttledAcceleration(lateralSpeed, goRight * lateralMaxSpeed, goRight * acceleration * delta, maintainExtraLateralMomentum);
-                }
+            var walking = false;
+            var pushingWall = false;
+            if (allowWalkUpSlides && (inputRight || inputLeft)) {
+                slideDown = false;
+                var goRight = inputRight ? 1f : -1f;
+                var acceleration = Math.signum(lateralSpeed) == goRight ? lateralAcceleration : lateralDeceleration;
+                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, goRight * lateralMaxSpeed, goRight * acceleration * delta, maintainExtraLateralMomentum);
+                walking = true;
             }
             
             if (slideDown) {
@@ -850,20 +1045,28 @@ public abstract class SlopeCharacter extends Entity {
             }
     
             if (touchingWall) {
-                if (lateralSpeed > 0 && Utils.isEqual360(wallAngle, 180, 90)) lateralSpeed = 0;
-                else if (lateralSpeed < 0 && Utils.isEqual360(wallAngle, 0, 90)) lateralSpeed = 0;
+                if (lateralSpeed > 0 && Utils.isEqual360(wallAngle, 180, 90) || lateralSpeed < 0 && Utils.isEqual360(wallAngle, 0, 90)) {
+                    lateralSpeed = 0;
+                    pushingWall = true;
+                }
             }
             
             addMotion(lateralSpeed, contactAngle - 90f);
+            
+            if (pushingWall) eventSlidePushWall(delta, wallAngle);
+            else if (walking) eventWalkingSlide(delta, lateralSpeed, groundAngle);
+            else eventSlideSlope(delta, lateralSpeed, groundAngle, contactAngle - 90f);
         }
         //Clinging to a wall
         else if (clingingToWall) {
             movementMode = WALL_CLINGING;
             deltaX = 0;
             if (!lastClingingToWall) deltaY = 0;
+            
+            var climbing = 0;
             if (allowClimbWalls && (inputWallClimbUp || inputWallClimbDown)) {
-                var goUp = inputWallClimbUp ? 1f : -1f;
-                deltaY = Utils.throttledAcceleration(deltaY, goUp * wallClimbMaxSpeed, goUp * wallClimbAcceleration * delta, false);
+                climbing = inputWallClimbUp ? 1 : -1;
+                deltaY = Utils.throttledAcceleration(deltaY, climbing * wallClimbMaxSpeed, climbing * wallClimbAcceleration * delta, false);
                 gravityY = 0;
             } else {
                 if (allowClimbWalls) deltaY = Utils.throttledDeceleration(deltaY, wallClimbMaxSpeed, wallClimbMinDeceleration, wallClimbDeceleration);
@@ -872,13 +1075,24 @@ public abstract class SlopeCharacter extends Entity {
                 if (deltaY > 0) deltaY = Utils.approach(deltaY, 0, wallClimbAcceleration * delta);
                 if (deltaY < maxSpeed) deltaY = maxSpeed;
             }
+            
+            if (!lastClingingToWall) eventWallCling(delta, wallAngle);
+            if (climbing != 0) {
+                eventWallClimbing(delta, wallAngle);
+            } else {
+                eventWallSliding(delta, wallAngle);
+            }
         }
         //Swinging
         else if (swinging) {
+            movementMode = SWINGING;
             var anchorCharacterX = x + swingCharacterAnchorOffsetX;
             var anchorCharacterY = y + swingCharacterAnchorOffsetY;
+            
+            var justSwinged = false;
+            //If just started swinging, create a new revoluteJoint
             if (inputSwingJustPressed && swingAnchorOrigin == null) {
-                
+                justSwinged = true;
                 BodyDef bodyDef = new BodyDef();
                 bodyDef.type = BodyType.StaticBody;
                 bodyDef.position.set(p2m(swingTargetX), p2m(swingTargetY));
@@ -934,6 +1148,9 @@ public abstract class SlopeCharacter extends Entity {
                 lateralSpeed = Utils.throttledAcceleration(lateralSpeed, goRight * lateralSwingMaxSpeed, goRight * lateralSwingAcceleration * delta, maintainExtraLateralMomentum);
                 body.setLinearVelocity(p2m(lateralSpeed), body.getLinearVelocity().y);
             }
+            
+            if (justSwinged) eventSwing(delta, swingAngle, lateralSpeed);
+            eventSwinging(delta, swingAngle,  lateralSpeed);
         }
         //Falling in the air (or jumping up)
         else {
@@ -959,16 +1176,21 @@ public abstract class SlopeCharacter extends Entity {
             
             if (hitHead) {
                 if (deltaY > 0) deltaY = 0;
+                eventHitHead(delta, ceilingAngle);
             }
             
             if (jumping && deltaY > 0 && !inputJump) {
                 jumping = false;
                 wallJumping = false;
                 deltaY *= jumpReleaseDampening;
+                eventJumpReleased(delta);
             }
             
             var term = Math.abs(terminalVelocity);
             if (deltaY < -term) deltaY = -term;
+            
+            if (touchingWall) eventFallingTouchingWall(delta, wallAngle);
+            else eventFalling(delta);
         }
     
         //destroy the swing anchor bodies which also causes the joint to be destroyed.
@@ -998,6 +1220,7 @@ public abstract class SlopeCharacter extends Entity {
             coyoteTimer = 0;
             deltaY = wallClimbLedgeJumpSpeed;
             movingPlatformFixtures.clear();
+            eventWallClimbReachedTop(delta);
         }
     
         //if initiating a wall jump
@@ -1011,6 +1234,7 @@ public abstract class SlopeCharacter extends Entity {
             inputJumpJustPressed = 0;
             movingPlatformFixtures.clear();
             setMotion(wallJumpSpeed, wallToRight ? 180 - wallJumpAngle : wallJumpAngle);
+            eventWallJump(delta, wallAngle);
         }
         
         //if initiating a jump
@@ -1026,6 +1250,10 @@ public abstract class SlopeCharacter extends Entity {
             if (canMidairJump) {
                 midairJumpCounter++;
                 midairJumpTimer = midairJumpDelay;
+                eventJumpMidair(delta);
+            } else {
+                if (allowJumpingWhileSliding && !canWalkOnSlope) eventJumpFromSlope(delta);
+                else eventJump(delta);
             }
         }
         
@@ -1074,9 +1302,10 @@ public abstract class SlopeCharacter extends Entity {
     public void beginContact(Entity other, Fixture fixture, Fixture otherFixture, Contact contact) {
         if (other instanceof Bounds) {
             var manifold = contact.getWorldManifold();
-            float normalAngle = manifold.getNormal().angleDeg();
-            float fixtureAngle = ((BoundsData) otherFixture.getUserData()).angle;
             var bounds = (Bounds) other;
+            var boundsData = (BoundsData) otherFixture.getUserData();
+            float normalAngle = manifold.getNormal().angleDeg();
+            float fixtureAngle = boundsData.angle;
             
             //Add the canPassThroughBottom bounds to the passThrough list if the character is
             // * already passing through it with another fixture
@@ -1088,6 +1317,7 @@ public abstract class SlopeCharacter extends Entity {
                 var badAngle = Utils.isEqual360(normalAngle, fixtureAngle + 180, 90);
                 if (alreadyContacting || hittingHead || badAngle) {
                     passThroughFixtures.add(otherFixture);
+                    eventPassedThroughPlatform(otherFixture, fixtureAngle, bounds, boundsData);
                     if (fixture == torsoFixture || fixture == footFixture) {
                         contact.setEnabled(false);
                         return;
@@ -1096,13 +1326,14 @@ public abstract class SlopeCharacter extends Entity {
             }
             
             //Add the fixture to the list of touched ground fixtures if it is a walkable or slideable surface
-            if (fixture == footFixture && Utils.isEqual360(((BoundsData)otherFixture.getUserData()).angle, 90, maxSlideAngle)) {
+            if (fixture == footFixture && Utils.isEqual360(fixtureAngle, 90, maxSlideAngle)) {
                 if (clearLastTouchedGroundFixtures) {
                     lastTouchedGroundFixtures.clear();
                     clearLastTouchedGroundFixtures = false;
                 }
                 touchedGroundFixtures.add(otherFixture);
                 lastTouchedGroundFixtures.add(otherFixture);
+                eventTouchGroundFixture(otherFixture, normalAngle, bounds, boundsData);
             }
             
             //add the fixture to the list of moving platforms if the bounds is kinematic
@@ -1147,6 +1378,7 @@ public abstract class SlopeCharacter extends Entity {
                         jumping = false;
                         wallJumping = false;
                         midairJumpCounter = 0;
+                        justLanded = true;
                     }
                 }
     
@@ -1156,6 +1388,7 @@ public abstract class SlopeCharacter extends Entity {
     
                 if (Utils.isEqual360(normalAngle, 270, maxCeilingAngle)) {
                     hitHead = true;
+                    ceilingAngle = normalAngle;
                 }
                 
                 if (!Utils.isEqual360(normalAngle, 90, maxSlideAngle)) {
