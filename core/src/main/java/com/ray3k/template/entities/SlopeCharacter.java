@@ -1018,10 +1018,30 @@ public abstract class SlopeCharacter extends Entity {
     This event is called once when the character has climbed to the top of a wall and is propelled upwards.
     **/
     public abstract void eventWallClimbReachedTop(float delta);
+    
+    /**
+    This event is called once when the character is clinging to a wall and initiates a jump.
+    **/
     public abstract void eventWallJump(float delta, float wallAngle);
+    
+    /**
+    This event is called once when the character begins to pass through the bottom side of a passThrough bounds.
+    @see Bounds#canPassThroughBottom
+    **/
     public abstract void eventPassedThroughPlatform(Fixture fixture, float fixtureAngle, Bounds bounds, BoundsData boundsData);
+    
+    /**
+    This event is called once when the character initiates a swing while in the air.
+    **/
     public abstract void eventSwing(float delta, float swingAngle, float lateralSpeed);
+    
+    /**
+    This event is called every frame while the character is swinging.
+    **/
     public abstract void eventSwinging(float delta, float swingAngle, float lateralSpeed);
+    /**
+    
+    **/
     public abstract void eventSwingReleased(float delta, float swingAngle, float lateralSpeed, boolean automaticRelease);
     public abstract void eventSwingCrashWall(float delta, float swingAngle, float lateralSpeed);
     public abstract void eventSwingCrashGround(float delta, float swingAngle, float lateralSpeed);
