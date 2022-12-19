@@ -984,15 +984,39 @@ public abstract class SlopeCharacter extends Entity {
     public abstract void eventHitHead(float delta, float ceilingAngle);
     
     /**
-     *
+     * This event is called every frame while the character is falliing in the air.
      * @param delta
      */
     public abstract void eventFalling(float delta);
+    
+    /**
+    This event is called every frame while the character is falling and touching a wall.
+    **/
     public abstract void eventFallingTouchingWall(float delta, float wallAngle);
+    
+    /**
+    This event is called once when the character has landed from a fall.
+    **/
     public abstract void eventLand(float delta, float groundAngle);
+    
+    /**
+    This event is called once when the character has first clinged to a wall.
+    **/
     public abstract void eventWallCling(float delta, float wallAngle);
+    
+    /**
+    This event is called every frame when the character is sliding down a wall.
+    **/
     public abstract void eventWallSliding(float delta, float wallAngle);
+    
+    /**
+    This event is called every frame when the character is climbing up or down a wall.
+    **/
     public abstract void eventWallClimbing(float delta, float wallAngle);
+    
+    /**
+    This event is called once when the character has climbed to the top of a wall and is propelled upwards.
+    **/
     public abstract void eventWallClimbReachedTop(float delta);
     public abstract void eventWallJump(float delta, float wallAngle);
     public abstract void eventPassedThroughPlatform(Fixture fixture, float fixtureAngle, Bounds bounds, BoundsData boundsData);
