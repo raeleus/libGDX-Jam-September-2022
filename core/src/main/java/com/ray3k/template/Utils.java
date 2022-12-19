@@ -433,34 +433,17 @@ public class Utils {
     }
     
     /**
-     * not sure this works...
+     * Determine if a polygon is wound clockwise. It may be concave or convex.
      * @param points
      * @return
      */
     public static boolean isClockwise(float[] points) {
-//        var sum = 0;
-//        for (int i = 0; i + 3 < points.length; i += 2) {
-//            sum += (points[i + 2] - points[i]) * (points[i + 3] - points[i + 1]);
-//        }
-//        sum += (points[0] - points[points.length - 2]) * (points[1] - points[points.length - 1]);
-//        return sum < 0;
-    
         var sum = 0;
-        for (int i = 0; i < points.length; i += 2) {
-            var x1 = points[i];
-            var y1 = points[i + 1];
-            float x2, y2;
-            if (i == points.length - 2) {
-                x2 = points[i];
-                y2 = points[i + 1];
-            } else {
-                x2 = points[i + 2];
-                y2 = points[i + 3];
-            }
-    
-            sum += (x1 * y2 - x2 * y1);
+        for (int i = 0; i + 3 < points.length; i += 2) {
+            sum += (points[i + 2] - points[i]) * (points[i + 3] + points[i + 1]);
         }
-        return sum / 2 < 0;
+        sum += (points[0] - points[points.length - 2]) * (points[1] + points[points.length - 1]);
+        return sum > 0;
     }
     
     private static final Vector2 closest=new Vector2();
