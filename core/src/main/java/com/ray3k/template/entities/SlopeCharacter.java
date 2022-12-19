@@ -990,68 +990,101 @@ public abstract class SlopeCharacter extends Entity {
     public abstract void eventFalling(float delta);
     
     /**
-    This event is called every frame while the character is falling and touching a wall.
+    * This event is called every frame while the character is falling and touching a wall.
+    * @param delta
+    * @param wallAngle
     **/
     public abstract void eventFallingTouchingWall(float delta, float wallAngle);
     
     /**
-    This event is called once when the character has landed from a fall.
+    * This event is called once when the character has landed from a fall.
+    * @param delta
+    * @param groundAngle
     **/
     public abstract void eventLand(float delta, float groundAngle);
     
     /**
-    This event is called once when the character has first clinged to a wall.
+    * This event is called once when the character has first clinged to a wall.
+    * @param delta
+    * @param wallAngle
     **/
     public abstract void eventWallCling(float delta, float wallAngle);
     
     /**
-    This event is called every frame when the character is sliding down a wall.
+    * This event is called every frame when the character is sliding down a wall.
+    * @param delta
+    * @param wallAngle
     **/
     public abstract void eventWallSliding(float delta, float wallAngle);
     
     /**
-    This event is called every frame when the character is climbing up or down a wall.
+    * This event is called every frame when the character is climbing up or down a wall.
+    * @param delta
+    * @param wallAngle
     **/
     public abstract void eventWallClimbing(float delta, float wallAngle);
     
     /**
-    This event is called once when the character has climbed to the top of a wall and is propelled upwards.
+    * This event is called once when the character has climbed to the top of a wall and is propelled upwards.
+    * @param delta
     **/
     public abstract void eventWallClimbReachedTop(float delta);
     
     /**
-    This event is called once when the character is clinging to a wall and initiates a jump.
+    * This event is called once when the character is clinging to a wall and initiates a jump.
+    * @param delta
+    * @param wallAngle
     **/
     public abstract void eventWallJump(float delta, float wallAngle);
     
     /**
-    This event is called once when the character begins to pass through the bottom side of a passThrough bounds.
-    @see Bounds#canPassThroughBottom
+    * This event is called once when the character begins to pass through the bottom side of a passThrough bounds.
+    * @param fixture
+    * @param fixtureAngle
+    * @param bounds
+    * @param boundsData
+    * @see Bounds#canPassThroughBottom
     **/
     public abstract void eventPassedThroughPlatform(Fixture fixture, float fixtureAngle, Bounds bounds, BoundsData boundsData);
     
     /**
-    This event is called once when the character initiates a swing while in the air.
+    * This event is called once when the character initiates a swing while in the air.
+    * @param delta
+    * @param swingAngle
+    * @param lateralSpeed
     **/
     public abstract void eventSwing(float delta, float swingAngle, float lateralSpeed);
     
     /**
-    This event is called every frame while the character is swinging.
+    * This event is called every frame while the character is swinging.
+    * @param delta
+    * @param swingAngle
+    * @param lateralSpeed
     **/
     public abstract void eventSwinging(float delta, float swingAngle, float lateralSpeed);
     
     /**
-    This event is called once when the character releases the input for a swing.
+    * This event is called once when the character releases the input for a swing.
+    * @param delta
+    * @param swingAngle
+    * @param lateralSpeed
+    * @param automaticRelease
     **/
     public abstract void eventSwingReleased(float delta, float swingAngle, float lateralSpeed, boolean automaticRelease);
     
     /**
-    This event is called once when the swing is cancelled from the character colliding with a wall.
+    * This event is called once when the swing is cancelled from the character colliding with a wall.
+    * @param delta
+    * @param swingAngle
+    * @param lateralSpeed
     **/
     public abstract void eventSwingCrashWall(float delta, float swingAngle, float lateralSpeed);
     
     /**
-    This event is called once when the swing is cancelled from the character colliding with the ground.
+    * This event is called once when the swing is cancelled from the character colliding with the ground.
+    * @param delta
+    * @param swingAngle
+    * @param lateralSpeed
     **/
     public abstract void eventSwingCrashGround(float delta, float swingAngle, float lateralSpeed);
     
