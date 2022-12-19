@@ -106,7 +106,7 @@ public class Player extends SlopeCharacter {
     }
     
     @Override
-    public void eventSlidePushWall(float delta, float wallAngle) {
+    public void eventSlidePushingWall(float delta, float wallAngle) {
     
     }
     
@@ -121,7 +121,7 @@ public class Player extends SlopeCharacter {
     }
     
     @Override
-    public void eventJumpFromSlope(float delta) {
+    public void eventJumpFromSlide(float delta) {
     
     }
     
@@ -202,6 +202,11 @@ public class Player extends SlopeCharacter {
     
     @Override
     public void eventSwingCrashGround(float delta, float swingAngle, float lateralSpeed) {
+    
+    }
+    
+    @Override
+    public void eventJumpApex(float delta) {
     
     }
 }

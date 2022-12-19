@@ -142,7 +142,7 @@ public abstract class SlopeCharacter extends Entity {
      */
     public float lateralStopDeceleration = 4000;
     /**
-     * How close the player has to be to a cliff edge to trigger the eventCliffEdge method.
+     * How close the character has to be to a cliff edge to trigger the eventCliffEdge method.
      * @see SlopeCharacter#eventCliffEdge(float, boolean)
      */
     public float walkCliffEdgeDistance = 20;
@@ -189,7 +189,7 @@ public abstract class SlopeCharacter extends Entity {
     public float lateralAirStopDeceleration = 500;
     
     /**
-     * The maximum speed that the player will slide down the wall by gravity while wall clinging.
+     * The maximum speed that the character will slide down the wall by gravity while wall clinging.
      */
     public float wallSlideMaxSpeed = 400;
     /**
@@ -219,16 +219,16 @@ public abstract class SlopeCharacter extends Entity {
      */
     public float wallClimbMinDeceleration = 1000;
     /**
-     * The length of the ray used to check if the player is connected to a wall on the left or right.
+     * The length of the ray used to check if the character is connected to a wall on the left or right.
      */
     public float wallRayDistance = 20;
     /**
-     * The vertical offset of the ray used to check if the player is connected to a wall on the left or right. This is
+     * The vertical offset of the ray used to check if the character is connected to a wall on the left or right. This is
      * measured from the offset of the foot fixture.
      */
     public float wallClimbRayYoffset;
     /**
-     * The speed of the jump when the player is climbing up and reaches the top of the wall. This allows for landing on
+     * The speed of the jump when the character is climbing up and reaches the top of the wall. This allows for landing on
      * top of the platform even if the climb speed is slow.
      */
     public float wallClimbLedgeJumpSpeed = 800;
@@ -266,7 +266,7 @@ public abstract class SlopeCharacter extends Entity {
      */
     public float terminalVelocity = 3000;
     /**
-     * The number of midair jumps the character is allowed to conduct. Set to 0 for no mid-air jumps. Set to -1 for
+     * The number of midair jumps the character is allowed to conduct. Set to 0 (default) for no mid-air jumps. Set to -1 for
      * unlimited midair jumps.
      */
     public int midairJumps;
@@ -368,7 +368,7 @@ public abstract class SlopeCharacter extends Entity {
      */
     public boolean previousSwinging;
     /**
-     * The current angle of the swing measured from the player position to the swinging origin.
+     * The current angle of the swing measured from the character position to the swinging origin.
      */
     public float swingAngle;
     /**
@@ -407,6 +407,10 @@ public abstract class SlopeCharacter extends Entity {
      * true if hitting a ceiling.
      */
     private boolean hitHead;
+    /**
+     * true if the character has reached the apex of their jump and is now falling.
+     */
+    private boolean hitJumpApex;
     /**
      * The speed that the character moves across the ground. Movement is parallel to the ground slope.
      */
@@ -529,13 +533,13 @@ public abstract class SlopeCharacter extends Entity {
     private boolean inputSwingJustPressed;
     /**
      * A list of fixtures that the character should pass through. These are typically fixtures associated with a Bounds
-     * entity that has canPassThroughBottom set to true and the player just jumped from underneath, the side, or is
+     * entity that has canPassThroughBottom set to true and the character just jumped from underneath, the side, or is
      * inside of one and is escaping it.
      * @see Bounds#canPassThroughBottom
      */
     private final Array<Fixture> passThroughFixtures = new Array<>();
     /**
-     * Counts down continuously and is reset when the player begins to fall. Used to compare against coyoteTime.
+     * Counts down continuously and is reset when the character begins to fall. Used to compare against coyoteTime.
      */
     private float coyoteTimer;
     /**
@@ -546,7 +550,7 @@ public abstract class SlopeCharacter extends Entity {
      */
     private float wallJumpTimer;
     /**
-     * Counts down after the character initiates a midair jump. This tracks how long until the player can conduct
+     * Counts down after the character initiates a midair jump. This tracks how long until the character can conduct
      * another midair jump.
      */
     private float midairJumpTimer;
@@ -664,8 +668,8 @@ public abstract class SlopeCharacter extends Entity {
     }
     
     /**
-     * Checks if the player is grounded via physically touching a ground fixture. If not, check via ray cast. This is
-     * necessary because of steep slopes and to check if the player is on a cliff edge.
+     * Checks if the character is grounded via physically touching a ground fixture. If not, check via ray cast. This is
+     * necessary because of steep slopes and to check if the character is on a cliff edge.
      */
     private void checkIfGrounded() {
         grounded = touchedGroundFixtures.size > 0;
@@ -849,7 +853,7 @@ public abstract class SlopeCharacter extends Entity {
     
     /**
      * This event is called for every frame the character is grounded and left or right input is received. This is not
-     * called when the player is walkReversing.
+     * called when the character is walkReversing.
      * @param delta
      * @param lateralSpeed
      * @param groundAngle
@@ -867,7 +871,7 @@ public abstract class SlopeCharacter extends Entity {
     public abstract void eventWalkStopping(float delta, float lateralSpeed, float groundAngle);
     
     /**
-     * This event is called once the player has come to a halt while grounded.
+     * This event is called once the character has come to a halt while grounded.
      * @param delta
      */
     public abstract void eventWalkStop(float delta);
@@ -891,16 +895,98 @@ public abstract class SlopeCharacter extends Entity {
      * @see SlopeCharacter#allowWalkUpSlides
      */
     public abstract void eventWalkingSlide(float delta, float lateralSpeed, float groundAngle);
+    
+    /**
+     * This event is called every frame when the character is pushing against a wall while walking.
+     * @param delta
+     * @param wallAngle
+     */
     public abstract void eventWalkPushingWall(float delta, float wallAngle);
+    
+    /**
+     * This event is called every frame when the character is standing close to an edge. This is determined by the
+     * walkCliffEdgeDistance from the character's (x,y) position.
+     * @param delta
+     * @param right
+     * @see SlopeCharacter#walkCliffEdgeDistance
+     */
     public abstract void eventCliffEdge(float delta, boolean right);
+    
+    /**
+     * This event is called once when the character is in the air and touches the ground.
+     * @param fixture
+     * @param contactNormalAngle
+     * @param bounds
+     * @param boundsData
+     */
     public abstract void eventTouchGroundFixture(Fixture fixture, float contactNormalAngle, Bounds bounds, BoundsData boundsData);
+    
+    /**
+     * This event is called every frame while the character is sliding down a slope as defined by maxWalkAngle/maxSlideAngle.
+     * @param delta
+     * @param lateralSpeed
+     * @param groundAngle
+     * @param slidingAngle
+     * @see SlopeCharacter#maxWalkAngle
+     * @see SlopeCharacter#maxSlideAngle
+     */
     public abstract void eventSlideSlope(float delta, float lateralSpeed, float groundAngle, float slidingAngle);
-    public abstract void eventSlidePushWall(float delta, float wallAngle);
+    
+    /**
+     * This event is called every frame while the character is pushing against a wall while sliding.
+     * @param delta
+     * @param wallAngle
+     */
+    public abstract void eventSlidePushingWall(float delta, float wallAngle);
+    
+    /**
+     * This event is called once when the character initiates a jump.
+     * @param delta
+     */
     public abstract void eventJump(float delta);
+    
+    /**
+     * This event is called once when the character releases the jump input. It is not called if the character continues to
+     * hold the input past the apex of the jump.
+     * @param delta
+     * @see SlopeCharacter#eventJumpApex(float)
+     */
     public abstract void eventJumpReleased(float delta);
-    public abstract void eventJumpFromSlope(float delta);
+    
+    /**
+     * This event is called once when the character reaches the apex of their jump.
+     * @param delta
+     */
+    public abstract void eventJumpApex(float delta);
+    
+    /**
+     * This event is called once when the character initiates a jump while sliding on a slope as defined by maxWalkAngle/maxSlideAngle.
+     * @param delta
+     * @see SlopeCharacter#maxWalkAngle
+     * @see SlopeCharacter#maxSlideAngle
+     * @see SlopeCharacter#allowJumpingWhileSliding
+     */
+    public abstract void eventJumpFromSlide(float delta);
+    
+    /**
+     * This event is called once when the character initiates a midair jump.
+     * @param delta
+     * @see SlopeCharacter#midairJumps
+     */
     public abstract void eventJumpMidair(float delta);
+    
+    /**
+     * This event is called once when the chracter is jumping and hits a ceiling.
+     * @param delta
+     * @param ceilingAngle
+     * @see SlopeCharacter#maxCeilingAngle
+     */
     public abstract void eventHitHead(float delta, float ceilingAngle);
+    
+    /**
+     *
+     * @param delta
+     */
     public abstract void eventFalling(float delta);
     public abstract void eventFallingTouchingWall(float delta, float wallAngle);
     public abstract void eventLand(float delta, float groundAngle);
@@ -1053,7 +1139,7 @@ public abstract class SlopeCharacter extends Entity {
             
             addMotion(lateralSpeed, contactAngle - 90f);
             
-            if (pushingWall) eventSlidePushWall(delta, wallAngle);
+            if (pushingWall) eventSlidePushingWall(delta, wallAngle);
             else if (walking) eventWalkingSlide(delta, lateralSpeed, groundAngle);
             else eventSlideSlope(delta, lateralSpeed, groundAngle, contactAngle - 90f);
         }
@@ -1186,6 +1272,11 @@ public abstract class SlopeCharacter extends Entity {
                 eventJumpReleased(delta);
             }
             
+            if (jumping && !hitJumpApex && deltaY <= 0) {
+                hitJumpApex = true;
+                eventJumpApex(delta);
+            }
+            
             var term = Math.abs(terminalVelocity);
             if (deltaY < -term) deltaY = -term;
             
@@ -1226,6 +1317,7 @@ public abstract class SlopeCharacter extends Entity {
         //if initiating a wall jump
         if (allowWallJump && canWallJump && MathUtils.isEqual(inputJumpJustPressed, jumpTriggerDelay)) {
             jumping = true;
+            hitJumpApex = false;
             wallJumping = true;
             wallJumpTimer = wallJumpDeactivateTime;
             falling = true;
@@ -1240,6 +1332,7 @@ public abstract class SlopeCharacter extends Entity {
         //if initiating a jump
         if (canJump && inputJumpJustPressed > 0) {
             jumping = true;
+            hitJumpApex = false;
             falling = true;
             canJump = false;
             coyoteTimer = 0;
@@ -1252,7 +1345,7 @@ public abstract class SlopeCharacter extends Entity {
                 midairJumpTimer = midairJumpDelay;
                 eventJumpMidair(delta);
             } else {
-                if (allowJumpingWhileSliding && !canWalkOnSlope) eventJumpFromSlope(delta);
+                if (allowJumpingWhileSliding && !canWalkOnSlope) eventJumpFromSlide(delta);
                 else eventJump(delta);
             }
         }
