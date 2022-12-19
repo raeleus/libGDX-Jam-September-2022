@@ -1039,11 +1039,20 @@ public abstract class SlopeCharacter extends Entity {
     This event is called every frame while the character is swinging.
     **/
     public abstract void eventSwinging(float delta, float swingAngle, float lateralSpeed);
-    /**
     
+    /**
+    This event is called once when the character releases the input for a swing.
     **/
     public abstract void eventSwingReleased(float delta, float swingAngle, float lateralSpeed, boolean automaticRelease);
+    
+    /**
+    This event is called once when the swing is cancelled from the character colliding with a wall.
+    **/
     public abstract void eventSwingCrashWall(float delta, float swingAngle, float lateralSpeed);
+    
+    /**
+    This event is called once when the swing is cancelled from the character colliding with the ground.
+    **/
     public abstract void eventSwingCrashGround(float delta, float swingAngle, float lateralSpeed);
     
     /**
