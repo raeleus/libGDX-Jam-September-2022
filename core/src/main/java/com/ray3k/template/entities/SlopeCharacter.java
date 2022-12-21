@@ -913,7 +913,7 @@ public abstract class SlopeCharacter extends Entity {
     public abstract void eventCliffEdge(float delta, boolean right);
     
     /**
-     * This event is called once when the character is in the air and touches the ground.
+     * This event is called when a new ground fixture is touched while walking or falling and touching the ground.
      * @param fixture
      * @param contactNormalAngle
      * @param bounds
@@ -1187,6 +1187,7 @@ public abstract class SlopeCharacter extends Entity {
         }
         //Sliding
         else if (stickToGround && grounded && !canWalkOnSlope && canSlideOnSlope && !falling) {
+            //todo:add momentum to slide when landing from a jump
             movementMode = SLIDING;
             gravityY = 0;
     
