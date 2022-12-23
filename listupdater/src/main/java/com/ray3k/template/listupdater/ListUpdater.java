@@ -50,7 +50,7 @@ import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 
 public class ListUpdater {
-    private static String levelFolderPath = "C:/onedrive/workspace/Jam Games/libGDX Jam September 2022/design/output/levels";
+    private static String levelFolderPath = System.getProperty("user.dir") + "/design/output/levels";
     private final static LameDuckAttachmentLoader lameDuckAttachmentLoader = new LameDuckAttachmentLoader();
     
     public static void main(String args[]) {
@@ -284,9 +284,8 @@ public class ListUpdater {
         if (levelFolderPath != null) {
             var sourcePath = Paths.get(levelFolderPath);
             try {
-                Files.walk(sourcePath).forEach(source -> {
-                    Path destination = Paths.get("assets/levels/",
-                            source.toString().substring(levelFolderPath.length()));
+                Files.walk(sourcePath).filter(Files::isRegularFile).forEach(source -> {
+                    Path destination = Paths.get(System.getProperty("user.dir") + "/assets/levels/" + source.toString().substring(levelFolderPath.length()));
                     try {
                         Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
                     } catch (IOException e) {
