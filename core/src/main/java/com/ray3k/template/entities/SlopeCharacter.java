@@ -18,7 +18,7 @@ import static com.ray3k.template.entities.SlopeCharacter.MovementMode.*;
 
 public abstract class SlopeCharacter extends Entity {
     public enum MovementMode {
-        WALKING, SLIDING, FALLING, WALL_CLINGING, SWINGING
+        WALKING, SLIDING, FALLING, WALL_CLINGING, LEDGE_GRABBING, SWINGING
     }
     private final static Vector2 temp1 = new Vector2();
     private final static Vector2 temp2 = new Vector2();
@@ -104,15 +104,19 @@ public abstract class SlopeCharacter extends Entity {
      * If true, the character can perform wall jump while they are next to a wall in the air without needing to cling on.
      */
     public boolean allowWallJumpWithoutCling;
+    public boolean allowLedgeJump;
     /**
      * If true, Automatically cling to walls if the character is adjacent to one in the air.
      */
     public boolean automaticallyClingToWalls;
+    public boolean automaticallyGrabLedges;
     /**
      * If true, the character can walk up slopes that typically the character would slide down. The character will still
      * slide downward if the appropriate input is not pressed.
      */
     public boolean allowWalkUpSlides;
+    
+    public boolean allowGrabLedges;
     /**
      * If true, the character is allowed to maintain additional momentum if they are holding the input in that direction.
      */
@@ -227,11 +231,13 @@ public abstract class SlopeCharacter extends Entity {
      * measured from the offset of the foot fixture.
      */
     public float wallClimbRayYoffset;
+    public float ledgeGrabYoffset;
     /**
      * The speed of the jump when the character is climbing up and reaches the top of the wall. This allows for landing on
      * top of the platform even if the climb speed is slow.
      */
     public float wallClimbLedgeJumpSpeed = 800;
+    public float ledgeGrabJumpSpeed = 900;
     /**
      * The angle of the wall jump if jumping from a wall on the character's left side. This angle is mirrored over the
      * vertical axis if the wall is on the right side.
@@ -252,7 +258,9 @@ public abstract class SlopeCharacter extends Entity {
      * from clinging to a wall immediately when pressed up in a corner.
      */
     public float clingToWallThreshold = .3f;
-    
+    public float grabLedgeThreshold = .3f;
+    public float ledgeGrabMaxDistance = 10f;
+    public float ledgeGrabGroundMaxAngle = 30f;
     /**
      * The signed gravity applied to the character while the character is in the air.
      */
@@ -395,6 +403,7 @@ public abstract class SlopeCharacter extends Entity {
      * True if the character is in the air, touching a wall, and can perform a wall jump.
      */
     public boolean canWallJump;
+    public boolean canLedgeJump;
     /**
      * True if touching a wall.
      */
@@ -403,6 +412,7 @@ public abstract class SlopeCharacter extends Entity {
      * True if the character is clinging to a wall.
      */
     private boolean clingingToWall;
+    private boolean grabbingLedge;
     /**
      * true if hitting a ceiling.
      */
@@ -574,6 +584,7 @@ public abstract class SlopeCharacter extends Entity {
      * @see SlopeCharacter#footRayOffsetY
      */
     private Fixture rayCastedGroundFixture;
+    private float ledgeGrabYadjustment;
     
     public SlopeCharacter(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
         this.footOffsetX = footOffsetX;
@@ -585,6 +596,7 @@ public abstract class SlopeCharacter extends Entity {
         
         this.torsoHeight = torsoHeight;
         this.wallClimbRayYoffset = (torsoHeight + footRadius) / 2;
+        this.ledgeGrabYoffset = (torsoHeight + footRadius);
     }
     
     @Override
@@ -1119,6 +1131,44 @@ public abstract class SlopeCharacter extends Entity {
                 }
             }
         }
+    
+        if (!allowGrabLedges || coyoteTimer > -grabLedgeThreshold) grabbingLedge = false;
+        else {
+            if (!inputWallClingRight && wallToRight || !inputWallClingLeft && !wallToRight || automaticallyGrabLedges) grabbingLedge = false;
+            if (falling && touchingWall) {
+                var clingingToRight = wallToRight && (inputWallClingRight || automaticallyGrabLedges);
+                var clingingToLeft = !wallToRight && (inputWallClingLeft || automaticallyGrabLedges);
+                if (clingingToRight || clingingToLeft) {
+                    grabbingLedge = false;
+                    var rayX = p2m(x + footRayOffsetX + (clingingToRight ? footRadius : -footRadius));
+                    var rayY = p2m(y + footRayOffsetY + ledgeGrabYoffset);
+                    //raycast to one side to check for a wall
+                    world.rayCast((fixture, point, normal, fraction) -> {
+                        if (!(fixture.getBody().getUserData() instanceof Bounds)) return -1;
+                        var edgeShape = (EdgeShape) fixture.getShape();
+                        edgeShape.getVertex1(temp1);
+                        edgeShape.getVertex2(temp2);
+                        var data = (BoundsData) fixture.getUserData();
+                        var previousData = (BoundsData) data.previousFixture.getUserData();
+                        var nextData = (BoundsData) data.nextFixture.getUserData();
+                        var fixtureHighPoint = Math.max(temp1.y, temp2.y);
+                        fixtureHighPoint = m2p(fixtureHighPoint);
+                        var distance = fixtureHighPoint - m2p(point.y);
+                        var ledgeAngle = clingingToRight ? nextData.angle : previousData.angle;
+                        if (distance < ledgeGrabMaxDistance && Utils.isEqual360(ledgeAngle, 90, ledgeGrabGroundMaxAngle)) {
+                            ledgeGrabYadjustment = distance;
+                            grabbingLedge = true;
+    
+                            //attach if touching a moving platform
+                            var bounds = (Bounds) fixture.getBody().getUserData();
+                            if (bounds.kinematic) movingPlatformFixtures.add(fixture);
+                            return 0;
+                        }
+                        return -1;
+                    }, rayX, rayY, rayX + p2m(clingingToRight ? wallRayDistance : -wallRayDistance), rayY);
+                }
+            }
+        }
         
         //Clear attachment to a moving platform if no longer clinging to the side
         if (lastClingingToWall && !clingingToWall) {
@@ -1229,6 +1279,14 @@ public abstract class SlopeCharacter extends Entity {
             if (pushingWall) eventSlidePushingWall(delta, wallAngle);
             else if (walking) eventWalkingSlide(delta, lateralSpeed, groundAngle);
             else eventSlideSlope(delta, lateralSpeed, groundAngle, contactAngle - 90f);
+        }
+        else if (grabbingLedge) {
+            movementMode = LEDGE_GRABBING;
+            deltaX = 0;
+            deltaY = 0;
+            temp1.set(0,ledgeGrabYadjustment);
+            body.setLinearVelocity(temp1);
+            gravityY = 0;
         }
         //Clinging to a wall
         else if (clingingToWall) {
@@ -1387,6 +1445,7 @@ public abstract class SlopeCharacter extends Entity {
         //determine if the character can jump
         canMidairJump = falling &&  coyoteTimer <= 0 && midairJumpTimer < 0 && (midairJumpCounter < midairJumps || midairJumps == -1);
         canWallJump = !grounded && (clingingToWall || allowWallJumpWithoutCling && touchingWall);
+        canLedgeJump = !grounded && grabbingLedge && touchingWall;
         if (allowJumpingWhileSliding) canJump = grounded && !falling || coyoteTimer > 0 || canMidairJump;
         else canJump = grounded && !falling && canWalkOnSlope || coyoteTimer > 0 || canMidairJump;
     
@@ -1400,9 +1459,34 @@ public abstract class SlopeCharacter extends Entity {
             movingPlatformFixtures.clear();
             eventWallClimbReachedTop(delta);
         }
+        
+        if (grabbingLedge && inputWallClimbUp) {
+            jumping = false;
+            falling = true;
+            canJump = false;
+            coyoteTimer = 0;
+            deltaY = ledgeGrabJumpSpeed;
+            movingPlatformFixtures.clear();
+            eventWallClimbReachedTop(delta);
+        }
     
         //if initiating a wall jump
         if (allowWallJump && canWallJump && MathUtils.isEqual(inputJumpJustPressed, jumpTriggerDelay)) {
+            jumping = true;
+            hitJumpApex = false;
+            wallJumping = true;
+            wallJumpTimer = wallJumpDeactivateTime;
+            falling = true;
+            canJump = false;
+            coyoteTimer = 0;
+            inputJumpJustPressed = 0;
+            movingPlatformFixtures.clear();
+            setMotion(wallJumpSpeed, wallToRight ? 180 - wallJumpAngle : wallJumpAngle);
+            eventWallJump(delta, wallAngle);
+        }
+        
+        //if initiating a ledge jump
+        if (allowLedgeJump && canLedgeJump && MathUtils.isEqual(inputJumpJustPressed, jumpTriggerDelay)) {
             jumping = true;
             hitJumpApex = false;
             wallJumping = true;
@@ -1455,6 +1539,12 @@ public abstract class SlopeCharacter extends Entity {
     
             var rayX = x + footRayOffsetX + footRadius;
             var rayY = y + footRayOffsetY + wallClimbRayYoffset;
+            shapeDrawer.line(rayX, rayY, rayX + wallRayDistance, rayY);
+            rayX = x + footRayOffsetX - footRadius;
+            shapeDrawer.line(rayX, rayY, rayX - wallRayDistance, rayY);
+    
+            rayX = x + footRayOffsetX + footRadius;
+            rayY = y + footRayOffsetY + ledgeGrabYoffset;
             shapeDrawer.line(rayX, rayY, rayX + wallRayDistance, rayY);
             rayX = x + footRayOffsetX - footRadius;
             shapeDrawer.line(rayX, rayY, rayX - wallRayDistance, rayY);
