@@ -793,6 +793,9 @@ public abstract class SlopeCharacter extends Entity {
         canSlideOnSlope = !canWalkOnSlope && Utils.isEqual360(groundAngle, 90, maxSlideAngle);
     }
     
+    /**
+     * Holding this input moves the character to the left while in the air or while touching the ground.
+     */
     public void moveLeft() {
         inputLeft = true;
     }
@@ -805,10 +808,16 @@ public abstract class SlopeCharacter extends Entity {
         inputJump = true;
     }
     
+    /**
+     * This input must be held to grab on to walls or ledges on the left side.
+     */
     public void moveWallClingLeft() {
         inputWallClingLeft = true;
     }
     
+    /**
+     * This input must be held to grab on to walls or ledges on the right side.
+     */
     public void moveWallClingRight() {
         inputWallClingRight = true;
     }
@@ -1134,8 +1143,9 @@ public abstract class SlopeCharacter extends Entity {
     
         if (!allowGrabLedges || coyoteTimer > -grabLedgeThreshold) grabbingLedge = false;
         else {
+            var climbingInput = inputWallClimbDown || inputWallClimbUp;
             if (!inputWallClingRight && wallToRight || !inputWallClingLeft && !wallToRight || automaticallyGrabLedges) grabbingLedge = false;
-            if (falling && touchingWall) {
+            if (falling && touchingWall && !climbingInput) {
                 var clingingToRight = wallToRight && (inputWallClingRight || automaticallyGrabLedges);
                 var clingingToLeft = !wallToRight && (inputWallClingLeft || automaticallyGrabLedges);
                 if (clingingToRight || clingingToLeft) {
@@ -1237,10 +1247,14 @@ public abstract class SlopeCharacter extends Entity {
         }
         //Sliding
         else if (stickToGround && grounded && !canWalkOnSlope && canSlideOnSlope && !falling) {
-            //todo:add momentum to slide when landing from a jump
             movementMode = SLIDING;
             gravityY = 0;
     
+            if (justLanded) {
+                temp1.set(deltaX, deltaY);
+                temp1.rotateDeg(groundAngle + 90);
+                lateralSpeed = temp1.x;
+            }
             if (touchedGroundFixtures.size == 0) {
                 setMotion(slopeStickForce, contactAngle + 180);
             }
@@ -1249,6 +1263,9 @@ public abstract class SlopeCharacter extends Entity {
             var slideDown = true;
             var walking = false;
             var pushingWall = false;
+    
+            if (justLanded) eventLand(delta, groundAngle);
+            
             if (allowWalkUpSlides && (inputRight || inputLeft)) {
                 slideDown = false;
                 var goRight = inputRight ? 1f : -1f;
