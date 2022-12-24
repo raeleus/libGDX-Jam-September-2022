@@ -220,6 +220,12 @@ public class Player extends SlopeCharacter {
     }
     
     @Override
+    public void eventLedgeJump(float delta, float wallAngle) {
+        movementAnimation = animationJump;
+        movementAnimationLoop = false;
+    }
+    
+    @Override
     public void eventPassedThroughPlatform(Fixture fixture, float fixtureAngle, Bounds bounds, BoundsData boundsData) {
         System.out.println("pass through");
     }

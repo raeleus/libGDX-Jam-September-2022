@@ -104,19 +104,28 @@ public abstract class SlopeCharacter extends Entity {
      * If true, the character can perform wall jump while they are next to a wall in the air without needing to cling on.
      */
     public boolean allowWallJumpWithoutCling;
-    public boolean allowLedgeJump;
     /**
-     * If true, Automatically cling to walls if the character is adjacent to one in the air.
+     * If true, automatically cling to walls if the character is adjacent to one in the air.
      */
     public boolean automaticallyClingToWalls;
+    /**
+     * If true, the character can grab a ledge if it aligns with the corresponding point on the body and
+     * moveWallClingRight() or moveWallClingLeft() are called.
+     */
+    public boolean allowGrabLedges;
+    /**
+     * If true, the character can perform a jump while grabbing a ledge if moveJump() is called.
+     */
+    public boolean allowLedgeJump;
+    /**
+     * If true, automatically grab a ledge if the character is touching one in the air.
+     */
     public boolean automaticallyGrabLedges;
     /**
      * If true, the character can walk up slopes that typically the character would slide down. The character will still
      * slide downward if the appropriate input is not pressed.
      */
     public boolean allowWalkUpSlides;
-    
-    public boolean allowGrabLedges;
     /**
      * If true, the character is allowed to maintain additional momentum if they are holding the input in that direction.
      */
@@ -231,12 +240,20 @@ public abstract class SlopeCharacter extends Entity {
      * measured from the offset of the foot fixture.
      */
     public float wallClimbRayYoffset;
-    public float ledgeGrabYoffset;
     /**
      * The speed of the jump when the character is climbing up and reaches the top of the wall. This allows for landing on
      * top of the platform even if the climb speed is slow.
      */
     public float wallClimbLedgeJumpSpeed = 800;
+    /**
+     * The vertical offset of the ray used to check if the character is touching a ledge on the  left or right. This is
+     * measured from the offset of the foot fixture.
+     */
+    public float ledgeGrabYoffset;
+    /**
+     * The speed of the jump when the character is grabbing a ledge and presses moveClimbUp().
+     * @see SlopeCharacter#moveClimbUp()
+     */
     public float ledgeGrabJumpSpeed = 900;
     /**
      * The angle of the wall jump if jumping from a wall on the character's left side. This angle is mirrored over the
@@ -258,8 +275,19 @@ public abstract class SlopeCharacter extends Entity {
      * from clinging to a wall immediately when pressed up in a corner.
      */
     public float clingToWallThreshold = .3f;
+    /**
+     * The time period from a jump where the chracter is not allowed to grab a ledge. This prevents the character
+     * from clinging to a wall immediately when trying to ledge jump.
+     */
     public float grabLedgeThreshold = .3f;
+    /**
+     * The maximum vertical distance that the character is allowed to be below the ledge in order for it to connect.
+     */
     public float ledgeGrabMaxDistance = 10f;
+    /**
+     * The maximum angle of the upper ground edge that is connected to the ledge point which the character is allowed
+     * to grab.
+     */
     public float ledgeGrabGroundMaxAngle = 30f;
     /**
      * The signed gravity applied to the character while the character is in the air.
@@ -403,6 +431,9 @@ public abstract class SlopeCharacter extends Entity {
      * True if the character is in the air, touching a wall, and can perform a wall jump.
      */
     public boolean canWallJump;
+    /**
+     * True if the character is in the air, touching a wall, and can perform a ledge jump
+     */
     public boolean canLedgeJump;
     /**
      * True if touching a wall.
@@ -412,6 +443,9 @@ public abstract class SlopeCharacter extends Entity {
      * True if the character is clinging to a wall.
      */
     private boolean clingingToWall;
+    /**
+     * True if the character is grabbing a ledge.
+     */
     private boolean grabbingLedge;
     /**
      * true if hitting a ceiling.
@@ -584,6 +618,9 @@ public abstract class SlopeCharacter extends Entity {
      * @see SlopeCharacter#footRayOffsetY
      */
     private Fixture rayCastedGroundFixture;
+    /**
+     * The distance that the character must travel vertically to line up with the ledge.
+     */
     private float ledgeGrabYadjustment;
     
     public SlopeCharacter(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
@@ -1059,6 +1096,13 @@ public abstract class SlopeCharacter extends Entity {
     public abstract void eventWallJump(float delta, float wallAngle);
     
     /**
+     * This event is called once when the character is clinging to a wall and initiates a jump.
+     * @param delta
+     * @param wallAngle
+     */
+    public abstract void eventLedgeJump(float delta, float wallAngle);
+    
+    /**
     * This event is called once when the character begins to pass through the bottom side of a passThrough bounds.
     * @param fixture
     * @param fixtureAngle
@@ -1141,6 +1185,7 @@ public abstract class SlopeCharacter extends Entity {
             }
         }
     
+        //determine if the character is grabbing a ledge.
         if (!allowGrabLedges || coyoteTimer > -grabLedgeThreshold) grabbingLedge = false;
         else {
             var climbingInput = inputWallClimbDown || inputWallClimbUp;
@@ -1297,6 +1342,7 @@ public abstract class SlopeCharacter extends Entity {
             else if (walking) eventWalkingSlide(delta, lateralSpeed, groundAngle);
             else eventSlideSlope(delta, lateralSpeed, groundAngle, contactAngle - 90f);
         }
+        //Grabbing a ledge
         else if (grabbingLedge) {
             movementMode = LEDGE_GRABBING;
             deltaX = 0;
@@ -1514,7 +1560,7 @@ public abstract class SlopeCharacter extends Entity {
             inputJumpJustPressed = 0;
             movingPlatformFixtures.clear();
             setMotion(wallJumpSpeed, wallToRight ? 180 - wallJumpAngle : wallJumpAngle);
-            eventWallJump(delta, wallAngle);
+            eventLedgeJump(delta, wallAngle);
         }
         
         //if initiating a jump
@@ -1549,29 +1595,34 @@ public abstract class SlopeCharacter extends Entity {
     @Override
     public void draw(float delta) {
         if (showDebug) {
+            //foot ray
             shapeDrawer.setColor(Color.GREEN);
             shapeDrawer.setDefaultLineWidth(5f);
             shapeDrawer.line(x + footRayOffsetX, y + footRayOffsetY, x + footOffsetX,
                     y + footOffsetY - footRayDistance);
     
+            //wall rays
             var rayX = x + footRayOffsetX + footRadius;
             var rayY = y + footRayOffsetY + wallClimbRayYoffset;
             shapeDrawer.line(rayX, rayY, rayX + wallRayDistance, rayY);
             rayX = x + footRayOffsetX - footRadius;
             shapeDrawer.line(rayX, rayY, rayX - wallRayDistance, rayY);
     
+            //ledge rays
             rayX = x + footRayOffsetX + footRadius;
             rayY = y + footRayOffsetY + ledgeGrabYoffset;
             shapeDrawer.line(rayX, rayY, rayX + wallRayDistance, rayY);
             rayX = x + footRayOffsetX - footRadius;
             shapeDrawer.line(rayX, rayY, rayX - wallRayDistance, rayY);
     
+            //contact angle
             shapeDrawer.setColor(Color.RED);
             shapeDrawer.setDefaultLineWidth(5f);
             temp1.set(20, 0);
             temp1.rotateDeg(contactAngle);
             shapeDrawer.line(x, y, x + temp1.x, y + temp1.y);
     
+            //ground angle
             shapeDrawer.setColor(Color.BLUE);
             shapeDrawer.setDefaultLineWidth(5f);
             temp1.set(20, 0);
