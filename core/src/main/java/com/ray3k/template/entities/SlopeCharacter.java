@@ -474,9 +474,10 @@ public abstract class SlopeCharacter extends Entity {
      */
     private float groundAngle;
     /**
-     * The angle of the last touched wall.
+     * The contact angle of the last touched wall.
      */
-    private float wallAngle;
+    private float wallContactAngle;
+    private float wallFixtureAngle;
     /**
      * The angle of the last touched ceiling.
      */
@@ -1179,7 +1180,7 @@ public abstract class SlopeCharacter extends Entity {
     private void handleMovement(float delta) {
         //determine if the character is clinging to a wall.
         var lastClingingToWall = clingingToWall;
-        boolean wallToRight = Utils.isEqual360(wallAngle, 180, 90);
+        boolean wallToRight = Utils.isEqual360(wallContactAngle, 180, 90);
         if (!allowClingToWalls || coyoteTimer > -clingToWallThreshold) clingingToWall = false;
         else {
             if (!inputWallClingRight && wallToRight || !inputWallClingLeft && !wallToRight || automaticallyClingToWalls) clingingToWall = false;
@@ -1256,6 +1257,10 @@ public abstract class SlopeCharacter extends Entity {
         }
         
         if (lastGrabbingLedge && !grabbingLedge) eventReleaseGrabLedge(delta);
+        if (grounded && lastClingingToWall) {
+            lateralSpeed = 0;
+            eventReleaseWallCling(delta);
+        }
         
         //Clear attachment to a moving platform if no longer clinging to the side
         if (lastClingingToWall && !clingingToWall) {
@@ -1303,7 +1308,8 @@ public abstract class SlopeCharacter extends Entity {
             }
             
             if (touchingWall) {
-                if (lateralSpeed > 0 && Utils.isEqual360(wallAngle, 180, 90) || lateralSpeed < 0 && Utils.isEqual360(wallAngle, 0, 90)) {
+                if (lateralSpeed > 0 && Utils.isEqual360(wallContactAngle, 180, 90) || lateralSpeed < 0 && Utils.isEqual360(
+                        wallContactAngle, 0, 90)) {
                     lateralSpeed = 0;
                     pushingWall = true;
                 }
@@ -1313,7 +1319,7 @@ public abstract class SlopeCharacter extends Entity {
     
             if (justLanded) eventLand(delta, groundAngle);
             
-            if (pushingWall) eventWalkPushingWall(delta, wallAngle);
+            if (pushingWall) eventWalkPushingWall(delta, wallContactAngle);
             else if (stopping) {
                 if (MathUtils.isZero(lateralSpeed)) eventWalkStop(delta);
                 else eventWalkStopping(delta, lateralSpeed, groundAngle);
@@ -1362,7 +1368,8 @@ public abstract class SlopeCharacter extends Entity {
             }
     
             if (touchingWall) {
-                if (lateralSpeed > 0 && Utils.isEqual360(wallAngle, 180, 90) || lateralSpeed < 0 && Utils.isEqual360(wallAngle, 0, 90)) {
+                if (lateralSpeed > 0 && Utils.isEqual360(wallContactAngle, 180, 90) || lateralSpeed < 0 && Utils.isEqual360(
+                        wallContactAngle, 0, 90)) {
                     lateralSpeed = 0;
                     pushingWall = true;
                 }
@@ -1370,7 +1377,7 @@ public abstract class SlopeCharacter extends Entity {
             
             addMotion(lateralSpeed, contactAngle - 90f);
             
-            if (pushingWall) eventSlidePushingWall(delta, wallAngle);
+            if (pushingWall) eventSlidePushingWall(delta, wallContactAngle);
             else if (walking) eventWalkingSlide(delta, lateralSpeed, groundAngle);
             else eventSlideSlope(delta, lateralSpeed, groundAngle, contactAngle - 90f);
         }
@@ -1382,32 +1389,38 @@ public abstract class SlopeCharacter extends Entity {
             temp1.set(0, p2m(ledgeGrabYadjustment * 1000 / MS_PER_UPDATE));
             body.setLinearVelocity(temp1);
             gravityY = 0;
-            if (!lastGrabbingLedge) eventGrabLedge(delta, wallAngle);
+            if (!lastGrabbingLedge) eventGrabLedge(delta, wallContactAngle);
         }
         //Clinging to a wall
         else if (clingingToWall) {
             movementMode = WALL_CLINGING;
-            deltaX = 0;
+            gravityY = 0;
+            if (!lastClingingToWall) {
+                eventWallCling(delta, wallFixtureAngle);
+                lateralSpeed = deltaY;
+            }
+            setMotion(slopeStickForce, wallContactAngle + 180);
             if (!lastClingingToWall) deltaY = 0;
             
             var climbing = 0;
             if (allowClimbWalls && (inputWallClimbUp || inputWallClimbDown)) {
                 climbing = inputWallClimbUp ? 1 : -1;
-                deltaY = Utils.throttledAcceleration(deltaY, climbing * wallClimbMaxSpeed, climbing * wallClimbAcceleration * delta, false);
-                gravityY = 0;
+                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, climbing * wallClimbMaxSpeed, climbing * wallClimbAcceleration * delta, false);
             } else {
-                if (allowClimbWalls) deltaY = Utils.throttledDeceleration(deltaY, wallClimbMaxSpeed, wallClimbMinDeceleration, wallClimbDeceleration);
-                gravityY = wallSlideAcceleration;
+                if (allowClimbWalls) lateralSpeed = Utils.throttledDeceleration(lateralSpeed, wallClimbMaxSpeed, wallClimbMinDeceleration, wallClimbDeceleration);
+                lateralSpeed += wallSlideAcceleration * delta;
                 var maxSpeed = -Math.abs(wallSlideMaxSpeed);
-                if (deltaY > 0) deltaY = Utils.approach(deltaY, 0, wallClimbAcceleration * delta);
-                if (deltaY < maxSpeed) deltaY = maxSpeed;
+                if (lateralSpeed > 0) lateralSpeed = Utils.approach(lateralAcceleration, 0, wallClimbAcceleration * delta);
+                if (lateralSpeed < maxSpeed) lateralSpeed = maxSpeed;
             }
+    
+            addMotion(lateralSpeed, wallContactAngle + (wallToRight ? -90 : 90));
+            System.out.println((wallContactAngle + (wallToRight ? -90 : 90)) + " " + deltaX + " " + deltaY);
             
-            if (!lastClingingToWall) eventWallCling(delta, wallAngle);
             if (climbing != 0) {
-                eventWallClimbing(delta, wallAngle);
+                eventWallClimbing(delta, wallFixtureAngle);
             } else {
-                eventWallSliding(delta, wallAngle);
+                eventWallSliding(delta, wallFixtureAngle);
             }
         }
         //Swinging
@@ -1497,8 +1510,8 @@ public abstract class SlopeCharacter extends Entity {
             lateralSpeed = deltaX;
     
             if (touchingWall && !hitHead) {
-                if (deltaX > 0 && Utils.isEqual360(wallAngle, 180, 90)) deltaX = 0;
-                else if (deltaX < 0 && Utils.isEqual360(wallAngle, 0, 90)) deltaX = 0;
+                if (deltaX > 0 && Utils.isEqual360(wallContactAngle, 180, 90)) deltaX = 0;
+                else if (deltaX < 0 && Utils.isEqual360(wallContactAngle, 0, 90)) deltaX = 0;
             }
             
             if (hitHead) {
@@ -1521,7 +1534,7 @@ public abstract class SlopeCharacter extends Entity {
             var term = Math.abs(terminalVelocity);
             if (deltaY < -term) deltaY = -term;
             
-            if (touchingWall) eventFallingTouchingWall(delta, wallAngle);
+            if (touchingWall) eventFallingTouchingWall(delta, wallContactAngle);
             else eventFalling(delta);
         }
     
@@ -1578,7 +1591,7 @@ public abstract class SlopeCharacter extends Entity {
             inputJumpJustPressed = 0;
             movingPlatformFixtures.clear();
             setMotion(wallJumpSpeed, wallToRight ? 180 - wallJumpAngle : wallJumpAngle);
-            eventWallJump(delta, wallAngle);
+            eventWallJump(delta, wallContactAngle);
         }
         
         //if initiating a ledge jump
@@ -1593,7 +1606,7 @@ public abstract class SlopeCharacter extends Entity {
             inputJumpJustPressed = 0;
             movingPlatformFixtures.clear();
             setMotion(wallJumpSpeed, wallToRight ? 180 - wallJumpAngle : wallJumpAngle);
-            eventLedgeJump(delta, wallAngle);
+            eventLedgeJump(delta, wallContactAngle);
         }
         
         //if initiating a jump
@@ -1764,7 +1777,8 @@ public abstract class SlopeCharacter extends Entity {
                 
                 if (!Utils.isEqual360(normalAngle, 90, maxSlideAngle)) {
                     touchingWall = true;
-                    wallAngle = normalAngle;
+                    wallContactAngle = normalAngle;
+                    wallFixtureAngle = otherFixtureData.angle;
                 }
             }
         }

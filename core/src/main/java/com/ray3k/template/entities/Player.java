@@ -28,7 +28,7 @@ public class Player extends SlopeCharacter {
         setSkeletonData(skeletonData, animationData);
         maintainExtraLateralMomentum = true;
         allowClingToWalls = true;
-        allowGrabLedges = true;
+        allowGrabLedges = false;
         allowClimbWalls = false;
         allowWallJump = true;
         allowWalkUpSlides = true;
