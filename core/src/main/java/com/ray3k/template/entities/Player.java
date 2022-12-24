@@ -27,7 +27,7 @@ public class Player extends SlopeCharacter {
         animationData.setDefaultMix(.25f);
         setSkeletonData(skeletonData, animationData);
         maintainExtraLateralMomentum = true;
-        allowClingToWalls = false;
+        allowClingToWalls = true;
         allowGrabLedges = true;
         allowClimbWalls = false;
         allowWallJump = true;
@@ -253,5 +253,20 @@ public class Player extends SlopeCharacter {
     @Override
     public void eventSwingCrashGround(float delta, float swingAngle, float lateralSpeed) {
 
+    }
+    
+    @Override
+    public void eventReleaseWallCling(float delta) {
+    
+    }
+    
+    @Override
+    public void eventGrabLedge(float delta, float wallAngle) {
+    
+    }
+    
+    @Override
+    public void eventReleaseGrabLedge(float delta) {
+    
     }
 }

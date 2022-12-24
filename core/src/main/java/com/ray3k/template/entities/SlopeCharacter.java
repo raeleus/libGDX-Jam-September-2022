@@ -1069,6 +1069,12 @@ public abstract class SlopeCharacter extends Entity {
     public abstract void eventWallCling(float delta, float wallAngle);
     
     /**
+     * This event is called once when the character has released from a wall.
+     * @param delta
+     */
+    public abstract void eventReleaseWallCling(float delta);
+    
+    /**
     * This event is called every frame when the character is sliding down a wall.
     * @param delta
     * @param wallAngle
@@ -1094,6 +1100,19 @@ public abstract class SlopeCharacter extends Entity {
     * @param wallAngle
     **/
     public abstract void eventWallJump(float delta, float wallAngle);
+    
+    /**
+     * This event is called once when the character grabs a ledge.
+     * @param delta
+     * @param wallAngle
+     */
+    public abstract void eventGrabLedge(float delta, float wallAngle);
+    
+    /**
+     * This event is called once when the character releases from a ledge;
+     * @param delta
+     */
+    public abstract void eventReleaseGrabLedge(float delta);
     
     /**
      * This event is called once when the character is clinging to a wall and initiates a jump.
@@ -1184,15 +1203,17 @@ public abstract class SlopeCharacter extends Entity {
                 }
             }
         }
+        
+        if (lastClingingToWall && !clingingToWall) eventReleaseWallCling(delta);
     
         //determine if the character is grabbing a ledge.
         var lastGrabbingLedge = grabbingLedge;
         var clingingInput = inputWallClingRight && wallToRight || inputWallClingLeft && !wallToRight;
-        if (!allowGrabLedges || coyoteTimer > -grabLedgeThreshold) grabbingLedge = false;
+        if (!allowGrabLedges || coyoteTimer > -grabLedgeThreshold || inputWallClimbDown) grabbingLedge = false;
         else if (lastGrabbingLedge && clingingInput) {
             grabbingLedge = true;
             ledgeGrabYadjustment = 0;
-        }
+        } else if (lastClingingToWall) grabbingLedge = false;
         else {
             var climbingInput = inputWallClimbDown || inputWallClimbUp;
             if (!inputWallClingRight && wallToRight || !inputWallClingLeft && !wallToRight || automaticallyGrabLedges) grabbingLedge = false;
@@ -1210,13 +1231,14 @@ public abstract class SlopeCharacter extends Entity {
                         edgeShape.getVertex1(temp1);
                         edgeShape.getVertex2(temp2);
                         var data = (BoundsData) fixture.getUserData();
+                        //if fixture is not a wall
+                        if (Utils.isEqual360(data.angle, 90, maxSlideAngle)) return -1;
+                        
                         var previousData = (BoundsData) data.previousFixture.getUserData();
                         var nextData = (BoundsData) data.nextFixture.getUserData();
                         var fixtureHighPoint = Math.max(temp1.y, temp2.y);
                         fixtureHighPoint = m2p(fixtureHighPoint);
                         var distance = fixtureHighPoint - m2p(point.y);
-                        //if fixture is not a wall
-                        if (Utils.isEqual360(data.angle, 90, maxSlideAngle)) return -1;
                         var ledgeAngle = clingingToRight ? nextData.angle : previousData.angle;
                         if (distance < ledgeGrabMaxDistance && Utils.isEqual360(ledgeAngle, 90, ledgeGrabGroundMaxAngle)) {
                             ledgeGrabYadjustment = distance;
@@ -1232,6 +1254,8 @@ public abstract class SlopeCharacter extends Entity {
                 }
             }
         }
+        
+        if (lastGrabbingLedge && !grabbingLedge) eventReleaseGrabLedge(delta);
         
         //Clear attachment to a moving platform if no longer clinging to the side
         if (lastClingingToWall && !clingingToWall) {
@@ -1358,6 +1382,7 @@ public abstract class SlopeCharacter extends Entity {
             temp1.set(0, p2m(ledgeGrabYadjustment * 1000 / MS_PER_UPDATE));
             body.setLinearVelocity(temp1);
             gravityY = 0;
+            if (!lastGrabbingLedge) eventGrabLedge(delta, wallAngle);
         }
         //Clinging to a wall
         else if (clingingToWall) {
@@ -1472,13 +1497,11 @@ public abstract class SlopeCharacter extends Entity {
             lateralSpeed = deltaX;
     
             if (touchingWall && !hitHead) {
-                System.out.println("touching wall");
                 if (deltaX > 0 && Utils.isEqual360(wallAngle, 180, 90)) deltaX = 0;
                 else if (deltaX < 0 && Utils.isEqual360(wallAngle, 0, 90)) deltaX = 0;
             }
             
             if (hitHead) {
-                System.out.println("hit head");
                 if (deltaY > 0) deltaY = 0;
                 eventHitHead(delta, ceilingAngle);
             }
