@@ -1471,12 +1471,14 @@ public abstract class SlopeCharacter extends Entity {
             }
             lateralSpeed = deltaX;
     
-            if (touchingWall) {
+            if (touchingWall && !hitHead) {
+                System.out.println("touching wall");
                 if (deltaX > 0 && Utils.isEqual360(wallAngle, 180, 90)) deltaX = 0;
                 else if (deltaX < 0 && Utils.isEqual360(wallAngle, 0, 90)) deltaX = 0;
             }
             
             if (hitHead) {
+                System.out.println("hit head");
                 if (deltaY > 0) deltaY = 0;
                 eventHitHead(delta, ceilingAngle);
             }
