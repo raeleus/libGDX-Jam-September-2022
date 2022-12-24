@@ -1186,7 +1186,13 @@ public abstract class SlopeCharacter extends Entity {
         }
     
         //determine if the character is grabbing a ledge.
+        var lastGrabbingLedge = grabbingLedge;
+        var clingingInput = inputWallClingRight && wallToRight || inputWallClingLeft && !wallToRight;
         if (!allowGrabLedges || coyoteTimer > -grabLedgeThreshold) grabbingLedge = false;
+        else if (lastGrabbingLedge && clingingInput) {
+            grabbingLedge = true;
+            ledgeGrabYadjustment = 0;
+        }
         else {
             var climbingInput = inputWallClimbDown || inputWallClimbUp;
             if (!inputWallClingRight && wallToRight || !inputWallClingLeft && !wallToRight || automaticallyGrabLedges) grabbingLedge = false;
@@ -1209,6 +1215,8 @@ public abstract class SlopeCharacter extends Entity {
                         var fixtureHighPoint = Math.max(temp1.y, temp2.y);
                         fixtureHighPoint = m2p(fixtureHighPoint);
                         var distance = fixtureHighPoint - m2p(point.y);
+                        //if fixture is not a wall
+                        if (Utils.isEqual360(data.angle, 90, maxSlideAngle)) return -1;
                         var ledgeAngle = clingingToRight ? nextData.angle : previousData.angle;
                         if (distance < ledgeGrabMaxDistance && Utils.isEqual360(ledgeAngle, 90, ledgeGrabGroundMaxAngle)) {
                             ledgeGrabYadjustment = distance;
@@ -1347,7 +1355,7 @@ public abstract class SlopeCharacter extends Entity {
             movementMode = LEDGE_GRABBING;
             deltaX = 0;
             deltaY = 0;
-            temp1.set(0,ledgeGrabYadjustment);
+            temp1.set(0, p2m(ledgeGrabYadjustment * 1000 / MS_PER_UPDATE));
             body.setLinearVelocity(temp1);
             gravityY = 0;
         }

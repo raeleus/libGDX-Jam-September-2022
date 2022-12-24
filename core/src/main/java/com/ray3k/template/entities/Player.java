@@ -27,9 +27,9 @@ public class Player extends SlopeCharacter {
         animationData.setDefaultMix(.25f);
         setSkeletonData(skeletonData, animationData);
         maintainExtraLateralMomentum = true;
-        allowClingToWalls = true;
+        allowClingToWalls = false;
         allowGrabLedges = true;
-        allowClimbWalls = true;
+        allowClimbWalls = false;
         allowWallJump = true;
         allowWalkUpSlides = true;
         automaticallyClingToWalls = false;
@@ -114,13 +114,13 @@ public class Player extends SlopeCharacter {
     
     @Override
     public void eventCliffEdge(float delta, boolean right) {
-        System.out.println("cliff");
+
     }
     
     @Override
     public void eventTouchGroundFixture(Fixture fixture, float contactNormalAngle, Bounds bounds,
                                         BoundsData boundsData) {
-        System.out.println("touch ground");
+
     }
     
     @Override
@@ -133,7 +133,7 @@ public class Player extends SlopeCharacter {
     
     @Override
     public void eventSlidePushingWall(float delta, float wallAngle) {
-        System.out.println("slide push");
+
     }
     
     @Override
@@ -167,7 +167,7 @@ public class Player extends SlopeCharacter {
     
     @Override
     public void eventHitHead(float delta, float ceilingAngle) {
-        System.out.println("hit head");
+
     }
     
     @Override
@@ -184,7 +184,7 @@ public class Player extends SlopeCharacter {
     
     @Override
     public void eventFallingTouchingWall(float delta, float wallAngle) {
-        System.out.println("falling wall");
+
     }
     
     @Override
@@ -200,17 +200,17 @@ public class Player extends SlopeCharacter {
     
     @Override
     public void eventWallSliding(float delta, float wallAngle) {
-        System.out.println("wall slide");
+
     }
     
     @Override
     public void eventWallClimbing(float delta, float wallAngle) {
-        System.out.println("wall climb");
+
     }
     
     @Override
     public void eventWallClimbReachedTop(float delta) {
-        System.out.println("wall climb top");
+
     }
     
     @Override
@@ -227,31 +227,31 @@ public class Player extends SlopeCharacter {
     
     @Override
     public void eventPassedThroughPlatform(Fixture fixture, float fixtureAngle, Bounds bounds, BoundsData boundsData) {
-        System.out.println("pass through");
+
     }
     
     @Override
     public void eventSwing(float delta, float swingAngle, float lateralSpeed) {
-        System.out.println("swing");
+
     }
     
     @Override
     public void eventSwinging(float delta, float swingAngle, float lateralSpeed) {
-        System.out.println("swinging");
+
     }
     
     @Override
     public void eventSwingReleased(float delta, float swingAngle, float lateralSpeed, boolean automaticRelease) {
-        System.out.println("swing released");
+
     }
     
     @Override
     public void eventSwingCrashWall(float delta, float swingAngle, float lateralSpeed) {
-        System.out.println("swing crash");
+    
     }
     
     @Override
     public void eventSwingCrashGround(float delta, float swingAngle, float lateralSpeed) {
-        System.out.println("swing crash ground");
+
     }
 }
