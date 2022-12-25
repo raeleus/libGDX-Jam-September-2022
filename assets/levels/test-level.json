@@ -15,7 +15,7 @@
       "gridCellsX": 284,
       "gridCellsY": 72,
       "entities": [
-        {"name": "player", "id": 0, "_eid": "98423303", "x": 816, "y": -1008, "originX": 21, "originY": 38}
+        {"name": "player", "id": 0, "_eid": "98423303", "x": -856, "y": -360, "originX": 21, "originY": 38}
       ]
     },
     {
