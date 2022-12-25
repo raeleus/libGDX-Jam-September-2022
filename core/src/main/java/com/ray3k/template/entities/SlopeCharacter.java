@@ -18,7 +18,7 @@ import static com.ray3k.template.entities.SlopeCharacter.MovementMode.*;
 
 public abstract class SlopeCharacter extends Entity {
     public enum MovementMode {
-        WALKING, SLIDING, FALLING, WALL_CLINGING, LEDGE_GRABBING, SWINGING
+        WALKING, SLIDING, FALLING, WALL_CLINGING, LEDGE_GRABBING, SWINGING, MAGNET
     }
     private final static Vector2 temp1 = new Vector2();
     private final static Vector2 temp2 = new Vector2();
@@ -623,6 +623,13 @@ public abstract class SlopeCharacter extends Entity {
      * The distance that the character must travel vertically to line up with the ledge.
      */
     private float ledgeGrabYadjustment;
+    public boolean allowMagnet;
+    private boolean magneting;
+    private Fixture magnetFixture;
+    private Fixture lastMagnetFixture;
+    private float magnetGravityAngle = 90;
+    private final ObjectSet<Fixture> magnetTouchedGroundFixtures = new ObjectSet<>();
+    private boolean cornerFixture;
     
     public SlopeCharacter(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
         this.footOffsetX = footOffsetX;
@@ -657,6 +664,8 @@ public abstract class SlopeCharacter extends Entity {
         clearLastTouchedGroundFixtures = true;
         justLanded = false;
         rayCastedGroundFixture = null;
+        if (magnetFixture != null) lastMagnetFixture = magnetFixture;
+        magnetFixture = null;
     }
     
     @Override
@@ -679,6 +688,7 @@ public abstract class SlopeCharacter extends Entity {
         var lastInputSwing = inputSwing;
         inputSwing = false;
         inputSwingJustPressed = false;
+        magneting = false;
         
         coyoteTimer -= delta;
         wallJumpTimer -= delta;
@@ -726,6 +736,11 @@ public abstract class SlopeCharacter extends Entity {
     
         boolean needToCheckForRayCastedGroundFixture = true;
         //If the character is not physically touching the ground, shoot a ray down to determine if he should be.
+        var rayX1 = p2m(x + footRayOffsetX);
+        var rayY1 = p2m(y + footRayOffsetY);
+        var rayX2 = p2m(x + footRayOffsetX);
+        var rayY2 = p2m(y + footRayOffsetY - footRayDistance);
+        
         if (!grounded && !falling) {
             needToCheckForRayCastedGroundFixture = false;
             world.rayCast((fixture, point, normal, fraction) -> {
@@ -750,7 +765,7 @@ public abstract class SlopeCharacter extends Entity {
                     }
                 }
                 return 1;
-            }, p2m(x + footRayOffsetX), p2m(y + footRayOffsetY), p2m(x + footRayOffsetX), p2m(y + footRayOffsetY - footRayDistance));
+            }, rayX1, rayY1, rayX2, rayY2);
         
             if (!grounded) {
                 falling = true;
@@ -779,7 +794,28 @@ public abstract class SlopeCharacter extends Entity {
                     }
                 }
                 return 1;
-            }, p2m(x + footRayOffsetX), p2m(y + footRayOffsetY), p2m(x + footRayOffsetX), p2m(y + footRayOffsetY - footRayDistance));
+            }, rayX1, rayY1, rayX2, rayY2);
+        }
+    
+        if (magneting && magnetTouchedGroundFixtures.size == 0) {
+            temp1.set(rayX2,  rayY2);
+            temp1.sub(rayX1, rayY1);
+            temp1.rotateDeg( magnetGravityAngle - 90);
+            temp1.add(rayX1, rayY1);
+            rayX2 = temp1.x;
+            rayY2 = temp1.y;
+
+            world.rayCast((fixture, point, normal, fraction) -> {
+                if (fixture.getBody().getUserData() instanceof Bounds) {
+                    System.out.println((((BoundsData) fixture.getUserData()).angle + 180) % 360);
+                    magnetGravityAngle = ((BoundsData) fixture.getUserData()).angle;
+                    magnetFixture = fixture;
+                    var bounds = (Bounds) fixture.getBody().getUserData();
+                    if (bounds.kinematic) movingPlatformFixtures.add(fixture);
+                    return 0;
+                }
+                return 1;
+            }, rayX1, rayY1, rayX2, rayY2);
         }
     }
     
@@ -1178,6 +1214,8 @@ public abstract class SlopeCharacter extends Entity {
      * @param delta
      */
     private void handleMovement(float delta) {
+        if (allowMagnet) magneting = true;
+        
         //determine if the character is clinging to a wall.
         var lastClingingToWall = clingingToWall;
         boolean wallToRight = Utils.isEqual360(wallContactAngle, 180, 90);
@@ -1285,7 +1323,7 @@ public abstract class SlopeCharacter extends Entity {
         }
         
         //Walking
-        if (stickToGround && grounded && canWalkOnSlope && !falling) {
+        if (stickToGround && grounded && canWalkOnSlope && !falling && !magneting) {
             movementMode = WALKING;
             gravityY = 0;
             
@@ -1329,7 +1367,7 @@ public abstract class SlopeCharacter extends Entity {
             }
         }
         //Sliding
-        else if (stickToGround && grounded && !canWalkOnSlope && canSlideOnSlope && !falling) {
+        else if (stickToGround && grounded && !canWalkOnSlope && canSlideOnSlope && !falling && !magneting) {
             movementMode = SLIDING;
             gravityY = 0;
     
@@ -1421,6 +1459,102 @@ public abstract class SlopeCharacter extends Entity {
                 eventWallClimbing(delta, wallFixtureAngle);
             } else {
                 eventWallSliding(delta, wallFixtureAngle);
+            }
+        }
+        //Magneting
+        else if (magneting) {
+            movementMode = MAGNET;
+            var inAir = true;
+            if (magnetTouchedGroundFixtures.size == 0 && magnetFixture != null) {
+                inAir = false;
+                setGravity(gravity * 10, magnetGravityAngle);
+            } else if (magnetFixture != null){
+                setGravity(gravity, magnetGravityAngle);
+                inAir = false;
+            } /*else if (lastMagnetFixture != null && !cornerFixture) {
+                var edgeData = (BoundsData) lastMagnetFixture.getUserData();
+                var previousShape = (EdgeShape) edgeData.previousFixture.getShape();
+                var nextShape = (EdgeShape) edgeData.nextFixture.getShape();
+                Fixture selectedFixture = null;
+                var closestDistance = Float.MAX_VALUE;
+
+                previousShape.getVertex1(temp1);
+                var distance = Utils.pointDistance(x, y, temp1.x, temp1.y);
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    selectedFixture = edgeData.previousFixture;
+                }
+                previousShape.getVertex2(temp1);
+                distance = Utils.pointDistance(x, y, temp1.x, temp1.y);
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    selectedFixture = edgeData.previousFixture;
+                }
+                nextShape.getVertex1(temp1);
+                distance = Utils.pointDistance(x, y, temp1.x, temp1.y);
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    selectedFixture = edgeData.nextFixture;
+                }
+                nextShape.getVertex2(temp1);
+                distance = Utils.pointDistance(x, y, temp1.x, temp1.y);
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    selectedFixture = edgeData.nextFixture;
+                }
+
+                if (selectedFixture != null) {
+                    magnetGravityAngle = ((BoundsData) selectedFixture.getUserData()).angle;
+                    System.out.println(magnetGravityAngle);
+//                    magnetFixture = selectedFixture;
+                    cornerFixture = true;
+                    inAir = false;
+                }
+            } */else {
+                System.out.println("help");
+            }
+            
+            temp1.set(body.getPosition());
+            body.setTransform(temp1.x, temp1.y, MathUtils.degRad * (magnetGravityAngle - 90));
+            
+            if (magnetTouchedGroundFixtures.size > 0) {
+                temp1.set(deltaX, deltaY);
+                temp1.rotateDeg(90 - magnetGravityAngle);
+                temp1.y = 0;
+                temp1.rotateDeg(-90 + magnetGravityAngle);
+                deltaX = temp1.x;
+                deltaY = temp1.y;
+                inAir = false;
+                cornerFixture = false;
+            }
+    
+            var accelerating = false;
+            var stopping = false;
+            if (inputRight || inputLeft) {
+                var goRight = inputRight ? 1f : -1f;
+                accelerating = Math.signum(lateralSpeed) == goRight;
+                var acceleration = accelerating ? lateralAcceleration : lateralDeceleration;
+                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, goRight * lateralMaxSpeed, goRight * acceleration * delta, maintainExtraLateralMomentum);
+            } else {
+                lateralSpeed = Utils.throttledDeceleration(lateralSpeed, lateralMaxSpeed, lateralStopMinDeceleration * delta, lateralStopDeceleration * delta);
+                stopping = true;
+            }
+            
+            temp1.set(deltaX, deltaY);
+            temp1.rotateDeg(90 - magnetGravityAngle);
+            temp1.x = lateralSpeed;
+            temp1.rotateDeg(-90 + magnetGravityAngle);
+            deltaX = temp1.x;
+            deltaY = temp1.y;
+    
+            if (justLanded) eventLand(delta, groundAngle);
+
+            if (stopping) {
+                if (MathUtils.isZero(lateralSpeed)) eventWalkStop(delta);
+                else eventWalkStopping(delta, lateralSpeed, groundAngle);
+            } else {
+                if (accelerating) eventWalking(delta, lateralSpeed, groundAngle);
+                else eventWalkReversing(delta, lateralSpeed, groundAngle);
             }
         }
         //Swinging
@@ -1557,6 +1691,7 @@ public abstract class SlopeCharacter extends Entity {
         canLedgeJump = !grounded && grabbingLedge && touchingWall;
         if (allowJumpingWhileSliding) canJump = grounded && !falling || coyoteTimer > 0 || canMidairJump;
         else canJump = grounded && !falling && canWalkOnSlope || coyoteTimer > 0 || canMidairJump;
+        if (magneting) canJump = false;
     
         //if reaching the top of a wall while wall climbing
         if (lastClingingToWall && !clingingToWall && inputWallClimbUp) {
@@ -1642,10 +1777,22 @@ public abstract class SlopeCharacter extends Entity {
     public void draw(float delta) {
         if (showDebug) {
             //foot ray
+            var rayX1 = x + footRayOffsetX;
+            var rayY1 = y + footRayOffsetY;
+            var rayX2 = x + footRayOffsetX;
+            var rayY2 = y + footRayOffsetY - footRayDistance;
+    
+            if (magneting) {
+                temp1.set(rayX2,  rayY2);
+                temp1.sub(rayX1, rayY1);
+                temp1.rotateDeg(magnetGravityAngle - 90);
+                temp1.add(rayX1, rayY1);
+                rayX2 = temp1.x;
+                rayY2 = temp1.y;
+            }
             shapeDrawer.setColor(Color.GREEN);
             shapeDrawer.setDefaultLineWidth(5f);
-            shapeDrawer.line(x + footRayOffsetX, y + footRayOffsetY, x + footOffsetX,
-                    y + footOffsetY - footRayDistance);
+            shapeDrawer.line(rayX1, rayY1, rayX2, rayY2);
     
             //wall rays
             var rayX = x + footRayOffsetX + footRadius;
@@ -1720,6 +1867,12 @@ public abstract class SlopeCharacter extends Entity {
                 eventTouchGroundFixture(otherFixture, normalAngle, bounds, boundsData);
             }
             
+            if (magneting && fixture == footFixture) {
+                magnetTouchedGroundFixtures.add(otherFixture);
+                magnetFixture = otherFixture;
+                magnetGravityAngle = normalAngle;
+            }
+            
             //add the fixture to the list of moving platforms if the bounds is kinematic
             if (fixture == footFixture && bounds.kinematic) {
                 movingPlatformFixtures.add(otherFixture);
@@ -1768,6 +1921,7 @@ public abstract class SlopeCharacter extends Entity {
     
                 contact.setFriction(0f);
             } else if (fixture == torsoFixture) {
+                if (magneting) contact.setEnabled(false);
                 contact.setFriction(0f);
     
                 if (Utils.isEqual360(normalAngle, 270, maxCeilingAngle)) {
@@ -1796,6 +1950,7 @@ public abstract class SlopeCharacter extends Entity {
             if (fixture == footFixture) {
                 touchedGroundFixtures.remove(otherFixture);
                 movingPlatformFixtures.remove(otherFixture);
+                magnetTouchedGroundFixtures.remove(otherFixture);
             }
         }
     }

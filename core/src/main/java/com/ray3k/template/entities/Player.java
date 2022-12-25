@@ -42,6 +42,7 @@ public class Player extends SlopeCharacter {
         animationState.setAnimation(1, animationTail, true);
         movementAnimation = animationJumpFall;
         body.setSleepingAllowed(false);
+        allowMagnet = true;
     }
     
     @Override
