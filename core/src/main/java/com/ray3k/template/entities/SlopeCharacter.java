@@ -567,6 +567,11 @@ public abstract class SlopeCharacter extends Entity {
      */
     private boolean inputWallClimbDown;
     /**
+     * Character called movePassThroughFloor() for this frame.
+     * @see SlopeCharacter#movePassThroughFloor()
+     */
+    private boolean inputPassThroughFloor;
+    /**
      * Character called moveSwing() for this frame.
      * @see SlopeCharacter#moveSwing(float, float)
      */
@@ -674,6 +679,7 @@ public abstract class SlopeCharacter extends Entity {
         inputJumpJustPressed -= delta;
         inputWallClimbDown = false;
         inputWallClimbUp = false;
+        inputPassThroughFloor = false;
         inputWallClingLeft = false;
         inputWallClingRight = false;
         var lastInputSwing = inputSwing;
@@ -838,10 +844,16 @@ public abstract class SlopeCharacter extends Entity {
         inputLeft = true;
     }
     
+    /**
+     * Holding this input moves the character to the right while in the air or while touching the ground.
+     */
     public void moveRight() {
         inputRight = true;
     }
     
+    /**
+     * Pressing this input initiates a jump while on the ground. Holding this input increases the height of the jump.
+     */
     public void moveJump() {
         inputJump = true;
     }
@@ -860,14 +872,32 @@ public abstract class SlopeCharacter extends Entity {
         inputWallClingRight = true;
     }
     
+    /**
+     * Holding this input moves the character up while clinging to a wall.
+     */
     public void moveClimbUp() {
         inputWallClimbUp = true;
     }
     
+    /**
+     * Holding this input moves the character down while clinging to a wall.
+     */
     public void moveClimbDown() {
         inputWallClimbDown = true;
     }
     
+    /**
+     * Holding this input allows the character to pass through the top of any bounds that is marked as canPassThroughBottom
+     */
+    public void movePassThroughFloor() {
+        inputPassThroughFloor = true;
+    }
+    
+    /**
+     * Initiates a swing at the provided coordinates.
+     * @param x
+     * @param y
+     */
     public void moveSwing(float x, float y) {
         inputSwing = true;
         swingTargetX = x;
@@ -1415,7 +1445,6 @@ public abstract class SlopeCharacter extends Entity {
             }
     
             addMotion(lateralSpeed, wallContactAngle + (wallToRight ? -90 : 90));
-            System.out.println((wallContactAngle + (wallToRight ? -90 : 90)) + " " + deltaX + " " + deltaY);
             
             if (climbing != 0) {
                 eventWallClimbing(delta, wallFixtureAngle);
@@ -1636,6 +1665,21 @@ public abstract class SlopeCharacter extends Entity {
             deltaX += platform.deltaX;
             deltaY += platform.deltaY;
         }
+        
+        //if touching a ground fixture and pressing input to pass through the floor.
+        if (touchedGroundFixtures.size > 0 && inputPassThroughFloor) {
+            for (var fixture : touchedGroundFixtures) {
+                if (((Bounds)fixture.getBody().getUserData()).canPassThroughBottom) {
+                    falling = true;
+                    jumping = false;
+                    wallJumping = false;
+                    canJump = false;
+                    coyoteTimer = 0;
+                    inputJumpJustPressed = 0;
+                    break;
+                }
+            }
+        }
     }
     
     @Override
@@ -1746,6 +1790,13 @@ public abstract class SlopeCharacter extends Entity {
             float normalAngle = manifold.getNormal().angleDeg();
             var otherFixtureData = ((BoundsData) otherFixture.getUserData());
             float fixtureAngle = otherFixtureData.angle;
+            
+            //pass through the floor if pressing input and bounds.canPassThroughBottom == true
+            if (inputPassThroughFloor && bounds.canPassThroughBottom) {
+                contact.setEnabled(false);
+                if (!passThroughFixtures.contains(otherFixture, true)) passThroughFixtures.add(otherFixture);
+                return;
+            }
             
             if (!checkContactEnabledPassThrough(bounds)) {
                 contact.setEnabled(false);

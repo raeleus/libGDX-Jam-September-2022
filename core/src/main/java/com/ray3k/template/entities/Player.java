@@ -54,6 +54,7 @@ public class Player extends SlopeCharacter {
         if (Core.isBindingPressed(Binding.RIGHT)) moveWallClingRight();
         if (Core.isBindingPressed(Binding.UP)) moveClimbUp();
         if (Core.isBindingPressed(Binding.DOWN)) moveClimbDown();
+        if (Core.isBindingPressed(Binding.DOWN)) movePassThroughFloor();
         
         if (Core.isButtonPressed(Buttons.LEFT)) moveSwing(mouseX, mouseY);
     }
