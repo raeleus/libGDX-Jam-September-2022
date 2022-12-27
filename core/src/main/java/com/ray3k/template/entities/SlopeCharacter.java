@@ -1767,7 +1767,7 @@ public abstract class SlopeCharacter extends Entity {
         else canJump = grounded && !falling && canWalkOnSlope && !clingingToCeiling || coyoteTimer > 0 || canMidairJump;
     
         //if reaching the top of a wall while wall climbing
-        if (allowClingToWalls && allowClimbWalls && lastClingingToWall && !clingingToWall && inputWallClimbUp) {
+        if (allowClingToWalls && allowClimbWalls && lastClingingToWall && !clingingToWall && inputWallClimbUp && deltaY > 0) {
             jumping = false;
             falling = true;
             canJump = false;
