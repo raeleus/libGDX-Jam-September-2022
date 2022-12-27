@@ -1415,6 +1415,7 @@ public abstract class SlopeCharacter extends Entity {
                 if (!(fixture.getBody().getUserData() instanceof Bounds)) return -1;
                 clingingToCeiling = true;
                 ceilingClingFixture = fixture;
+                ceilingAngle = ((BoundsData)fixture.getUserData()).angle;
         
                 //attach if touching a moving platform
                 var bounds = (Bounds) fixture.getBody().getUserData();
