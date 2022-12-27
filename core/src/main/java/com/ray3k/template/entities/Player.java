@@ -34,7 +34,6 @@ public class Player extends SlopeCharacter {
         allowWalkUpSlides = true;
         automaticallyClingToWalls = false;
         allowWallJumpWithoutCling = true;
-        this.wallSlideAcceleration = -400f;
         midairJumps = -1;
         swingImpulse = 0;
         swingCharacterAnchorOffsetY = 50;

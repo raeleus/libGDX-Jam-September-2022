@@ -204,11 +204,15 @@ public abstract class SlopeCharacter extends Entity {
     /**
      * The maximum speed that the character will slide down the wall by gravity while wall clinging.
      */
-    public float wallSlideMaxSpeed = 400;
+    public float wallSlideMaxSpeed = 1500;
     /**
      * How fast the character accelerates downwards while wall clinging.
      */
-    public float wallSlideAcceleration = -400;
+    public float wallSlideDownAcceleration = 1000;
+    /**
+     * How fast the character slows down while sliding up a wall.
+     */
+    public float wallSlideUpDeceleration = 3000;
     /**
      * The maximum speed that the character can climb walls.
      */
@@ -477,6 +481,9 @@ public abstract class SlopeCharacter extends Entity {
      * The contact angle of the last touched wall.
      */
     private float wallContactAngle;
+    /**
+     * The fixture angle of the last touched wall.
+     */
     private float wallFixtureAngle;
     /**
      * The angle of the last touched ceiling.
@@ -1428,9 +1435,9 @@ public abstract class SlopeCharacter extends Entity {
             if (!lastClingingToWall) {
                 eventWallCling(delta, wallFixtureAngle);
                 lateralSpeed = deltaY;
+                jumping = false;
             }
             setMotion(slopeStickForce, wallContactAngle + 180);
-            if (!lastClingingToWall) deltaY = 0;
             
             var climbing = 0;
             if (allowClimbWalls && (inputWallClimbUp || inputWallClimbDown)) {
@@ -1438,10 +1445,14 @@ public abstract class SlopeCharacter extends Entity {
                 lateralSpeed = Utils.throttledAcceleration(lateralSpeed, climbing * wallClimbMaxSpeed, climbing * wallClimbAcceleration * delta, false);
             } else {
                 if (allowClimbWalls) lateralSpeed = Utils.throttledDeceleration(lateralSpeed, wallClimbMaxSpeed, wallClimbMinDeceleration, wallClimbDeceleration);
-                lateralSpeed += wallSlideAcceleration * delta;
-                var maxSpeed = -Math.abs(wallSlideMaxSpeed);
-                if (lateralSpeed > 0) lateralSpeed = Utils.approach(lateralAcceleration, 0, wallClimbAcceleration * delta);
-                if (lateralSpeed < maxSpeed) lateralSpeed = maxSpeed;
+                else {
+                    if (lateralSpeed > 0)
+                        lateralSpeed = Utils.approach(lateralSpeed, 0, wallSlideUpDeceleration * delta);
+                    else lateralSpeed += -Math.abs(wallSlideDownAcceleration) * delta;
+                }
+                
+                var maxSpeed = Math.abs(wallSlideMaxSpeed);
+                if (lateralSpeed < -maxSpeed) lateralSpeed = -maxSpeed;
             }
     
             addMotion(lateralSpeed, wallContactAngle + (wallToRight ? -90 : 90));
