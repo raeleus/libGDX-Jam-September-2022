@@ -12,6 +12,7 @@ public class Bounds extends Entity {
     public int edgeCount;
     public boolean canPassThroughBottom;
     public boolean kinematic;
+    public boolean ceilingClingable = true;
     
     public Bounds(float[] points, boolean kinematic) {
         this.points = points;

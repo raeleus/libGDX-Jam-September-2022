@@ -18,7 +18,7 @@ import static com.ray3k.template.entities.SlopeCharacter.MovementMode.*;
 
 public abstract class SlopeCharacter extends Entity {
     public enum MovementMode {
-        WALKING, SLIDING, FALLING, WALL_CLINGING, LEDGE_GRABBING, SWINGING
+        WALKING, SLIDING, FALLING, WALL_CLINGING, LEDGE_GRABBING, SWINGING, CEILING_CLINGING
     }
     private final static Vector2 temp1 = new Vector2();
     private final static Vector2 temp2 = new Vector2();
@@ -126,6 +126,12 @@ public abstract class SlopeCharacter extends Entity {
      * slide downward if the appropriate input is not pressed.
      */
     public boolean allowWalkUpSlides;
+    /**
+     * If true, the character is allowed to cling to the bottoms of Bounds that are marked as ceilingClingable. The
+     * character can move left and right.
+     * @see Bounds#ceilingClingable
+     */
+    public boolean allowClingToCeilings;
     /**
      * If true, the character is allowed to maintain additional momentum if they are holding the input in that direction.
      */
@@ -249,6 +255,34 @@ public abstract class SlopeCharacter extends Entity {
      * top of the platform even if the climb speed is slow.
      */
     public float wallClimbLedgeJumpSpeed = 800;
+    /**
+     * The maximum acceleration that the character has while moving horizontally when clinging to a ceiling. The actual
+     * acceleration is diminished on a curve as the character approaches ceilingClingLateralMaxSpeed
+     * @see SlopeCharacter#ceilingClingLateralMaxSpeed
+     */
+    public float ceilingClingLateralAcceleration = 2500;
+    /**
+     * The maximum deceleration that the character has while moving horizontally when clining to a ceiling. This is
+     * implemented when the character presses input in the opposite direction of which they are moving. This value is on
+     * a curve and actualacceleration may be higher.
+     */
+    public float ceilingClingLateralDeceleration = 3500;
+    /**
+     * The maximum speed that the character is allowed to move horizontally while clinging to a ceiling.
+     */
+    public float ceilingClingLateralMaxSpeed = 800;
+    /**
+     * The minimum deceleration that the character has when they stop walking. This is implemented when there is no
+     * left or right input. This is used when the character is close to ceilingClingLateralMaxSpeed.
+     * @see SlopeCharacter#ceilingClingLateralMaxSpeed
+     */
+    public float ceilingClingLateralStopMinDeceleration = 1000;
+    /**
+     * The maximum deceleration that the character has when they stop moving horizontally while clinging to the ceiling
+     * This is implemented when there is no left or right input. The actual deceleration is on a curve where maximum
+     * deceleration is experienced when closer to 0.
+     */
+    public float ceilingClingLateralStopDeceleration = 4000;
     /**
      * The vertical offset of the ray used to check if the character is touching a ledge on the  left or right. This is
      * measured from the offset of the foot fixture.
@@ -451,6 +485,7 @@ public abstract class SlopeCharacter extends Entity {
      * True if the character is grabbing a ledge.
      */
     private boolean grabbingLedge;
+    private boolean clingingToCeiling;
     /**
      * true if hitting a ceiling.
      */
@@ -493,6 +528,7 @@ public abstract class SlopeCharacter extends Entity {
      * The ground fixtures that were touched in this frame.
      */
     private final ObjectSet<Fixture> touchedGroundFixtures = new ObjectSet<>();
+    private final ObjectSet<Fixture> touchedCeilingClingFixtures = new ObjectSet<>();
     /**
      * The ground fixtures that were touched in the last frame.
      */
@@ -563,6 +599,7 @@ public abstract class SlopeCharacter extends Entity {
      * @see SlopeCharacter#moveWallClingRight()
      */
     private boolean inputWallClingRight;
+    private boolean inputCeilingCling;
     /**
      * Character called moveClimbUp() for this frame.
      * @see SlopeCharacter#moveClimbUp()
@@ -635,6 +672,7 @@ public abstract class SlopeCharacter extends Entity {
      * The distance that the character must travel vertically to line up with the ledge.
      */
     private float ledgeGrabYadjustment;
+    private Fixture ceilingClingFixture;
     
     public SlopeCharacter(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
         this.footOffsetX = footOffsetX;
@@ -669,6 +707,7 @@ public abstract class SlopeCharacter extends Entity {
         clearLastTouchedGroundFixtures = true;
         justLanded = false;
         rayCastedGroundFixture = null;
+        ceilingClingFixture = null;
     }
     
     @Override
@@ -689,6 +728,7 @@ public abstract class SlopeCharacter extends Entity {
         inputPassThroughFloor = false;
         inputWallClingLeft = false;
         inputWallClingRight = false;
+        inputCeilingCling = false;
         var lastInputSwing = inputSwing;
         inputSwing = false;
         inputSwingJustPressed = false;
@@ -877,6 +917,10 @@ public abstract class SlopeCharacter extends Entity {
      */
     public void moveWallClingRight() {
         inputWallClingRight = true;
+    }
+    
+    public void moveCeilingCling() {
+        inputCeilingCling = true;
     }
     
     /**
@@ -1160,6 +1204,49 @@ public abstract class SlopeCharacter extends Entity {
     public abstract void eventLedgeJump(float delta, float wallAngle);
     
     /**
+     * This event is called every frame when the character is pushing against a wall while moving horizontally when
+     * clinging to a ceiling.
+     * @param delta
+     * @param wallContactAngle
+     */
+    public abstract void eventCeilingClingPushingWall(float delta, float wallContactAngle);
+    
+    /**
+     * This event is called once the character has come to a halt while clinging to a ceiling.
+     * @param delta
+     */
+    public abstract void eventCeilingClingStop(float delta);
+    
+    /**
+     * This event is called for every frame the character is clinging to a ceiling and has horizontal momentum, but is
+     * not applying left or right input.
+     * @param previousSwingDelta
+     * @param lateralSpeed
+     * @param ceilingAngle
+     */
+    public abstract void eventCeilingClingStopping(float previousSwingDelta, float lateralSpeed, float ceilingAngle);
+    
+    /**
+     * This event is called for every frame the character is clinging to a ceiling and left or right input is received.
+     * This is not called when the character is moveReversing.
+     * @param delta
+     * @param lateralSpeed
+     * @param ceilingAngle
+     * @see SlopeCharacter#eventCeilingClingMovingReversing(float, float, float)
+     */
+    public abstract void eventCeilingClingMoving(float delta, float lateralSpeed, float ceilingAngle);
+    
+    /**
+     * This event is called every frame that the character is clinging to a ceiling and is calling an input that makes
+     * them move in the opposite direction of their momentum. This overrides the moving event.
+     * @param delta
+     * @param lateralSpeed
+     * @param groundAngle
+     * @see SlopeCharacter#eventCeilingClingMoving(float, float, float)
+     */
+    public abstract void eventCeilingClingMovingReversing(float delta, float lateralSpeed, float groundAngle);
+    
+    /**
     * This event is called once when the character begins to pass through the bottom side of a passThrough bounds.
     * @param fixture
     * @param fixtureAngle
@@ -1298,6 +1385,9 @@ public abstract class SlopeCharacter extends Entity {
             lateralSpeed = 0;
             eventReleaseWallCling(delta);
         }
+        
+        //check if the character is clinging to a ceiling fixture.
+        clingingToCeiling = allowClingToCeilings && ceilingClingFixture != null && inputCeilingCling;
         
         //Clear attachment to a moving platform if no longer clinging to the side
         if (lastClingingToWall && !clingingToWall) {
@@ -1463,6 +1553,51 @@ public abstract class SlopeCharacter extends Entity {
                 eventWallSliding(delta, wallFixtureAngle);
             }
         }
+        //Clinging to a ceiling
+        else if (clingingToCeiling) {
+            movementMode = CEILING_CLINGING;
+            gravityY = 0;
+    
+            if (touchedCeilingClingFixtures.size == 0) {
+                setMotion(slopeStickForce, ceilingAngle + 180);
+            }
+            else setSpeed(0);
+            setSpeed(0);
+    
+            var accelerating = false;
+            var stopping = false;
+            var pushingWall = false;
+            if (inputRight || inputLeft) {
+                var goRight = inputRight ? 1f : -1f;
+                accelerating = Math.signum(lateralSpeed) == goRight;
+                var acceleration = accelerating ? ceilingClingLateralAcceleration : ceilingClingLateralDeceleration;
+                lateralSpeed = Utils.throttledAcceleration(lateralSpeed, goRight * ceilingClingLateralMaxSpeed, goRight * acceleration * delta, maintainExtraLateralMomentum);
+            } else {
+                lateralSpeed = Utils.throttledDeceleration(lateralSpeed, ceilingClingLateralMaxSpeed, ceilingClingLateralStopMinDeceleration * delta, ceilingClingLateralStopDeceleration * delta);
+                stopping = true;
+            }
+    
+            if (touchingWall) {
+                if (lateralSpeed > 0 && Utils.isEqual360(wallContactAngle, 180, 90) || lateralSpeed < 0 && Utils.isEqual360(
+                        wallContactAngle, 0, 90)) {
+                    lateralSpeed = 0;
+                    pushingWall = true;
+                }
+            }
+    
+            addMotion(lateralSpeed, ceilingAngle + 90f);
+    
+            if (justLanded) eventLand(delta, groundAngle);
+    
+            if (pushingWall) eventCeilingClingPushingWall(delta, wallContactAngle);
+            else if (stopping) {
+                if (MathUtils.isZero(lateralSpeed)) eventCeilingClingStop(delta);
+                else eventCeilingClingStopping(delta, lateralSpeed, ceilingAngle);
+            } else {
+                if (accelerating) eventCeilingClingMoving(delta, lateralSpeed, ceilingAngle);
+                else eventCeilingClingMovingReversing(delta, lateralSpeed, ceilingAngle);
+            }
+        }
         //Swinging
         else if (swinging) {
             movementMode = SWINGING;
@@ -1592,11 +1727,11 @@ public abstract class SlopeCharacter extends Entity {
         }
         
         //determine if the character can jump
-        canMidairJump = falling &&  coyoteTimer <= 0 && midairJumpTimer < 0 && (midairJumpCounter < midairJumps || midairJumps == -1);
-        canWallJump = !grounded && (clingingToWall || allowWallJumpWithoutCling && touchingWall);
-        canLedgeJump = !grounded && grabbingLedge && touchingWall;
+        canMidairJump = falling &&  coyoteTimer <= 0 && midairJumpTimer < 0 && (midairJumpCounter < midairJumps || midairJumps == -1) && !clingingToCeiling;
+        canWallJump = !grounded && (clingingToWall || allowWallJumpWithoutCling && touchingWall) && !clingingToCeiling;
+        canLedgeJump = !grounded && grabbingLedge && touchingWall && !clingingToCeiling;
         if (allowJumpingWhileSliding) canJump = grounded && !falling || coyoteTimer > 0 || canMidairJump;
-        else canJump = grounded && !falling && canWalkOnSlope || coyoteTimer > 0 || canMidairJump;
+        else canJump = grounded && !falling && canWalkOnSlope && !clingingToCeiling || coyoteTimer > 0 || canMidairJump;
     
         //if reaching the top of a wall while wall climbing
         if (lastClingingToWall && !clingingToWall && inputWallClimbUp) {
@@ -1775,6 +1910,12 @@ public abstract class SlopeCharacter extends Entity {
                 eventTouchGroundFixture(otherFixture, normalAngle, bounds, boundsData);
             }
             
+            //Add the fixture to the list of touched ceiling fixture if it is within ceiling angle
+            if (fixture == torsoFixture && Utils.isEqual360(fixtureAngle, 270, maxCeilingAngle)) {
+                touchedCeilingClingFixtures.add(otherFixture);
+                
+            }
+            
             //add the fixture to the list of moving platforms if the bounds is kinematic
             if (fixture == footFixture && bounds.kinematic) {
                 movingPlatformFixtures.add(otherFixture);
@@ -1835,9 +1976,11 @@ public abstract class SlopeCharacter extends Entity {
                 if (Utils.isEqual360(normalAngle, 270, maxCeilingAngle)) {
                     hitHead = true;
                     ceilingAngle = normalAngle;
+                    if (bounds.ceilingClingable) ceilingClingFixture = otherFixture;
                 }
                 
-                if (!Utils.isEqual360(normalAngle, 90, maxSlideAngle)) {
+                //if not a walkable, slideable, or ceiling angle, it's a wall.
+                if (!Utils.isEqual360(normalAngle, 90, maxSlideAngle) && !Utils.isEqual360(normalAngle, 270, maxCeilingAngle)) {
                     touchingWall = true;
                     wallContactAngle = normalAngle;
                     wallFixtureAngle = otherFixtureData.angle;
@@ -1871,8 +2014,8 @@ public abstract class SlopeCharacter extends Entity {
                 return;
             }
     
+            float angle = contact.getWorldManifold().getNormal().angleDeg();
             if (fixture == footFixture) {
-                float angle = contact.getWorldManifold().getNormal().angleDeg();
                 if (Utils.isEqual360(angle, 90, maxSlideAngle)) contactAngle = angle;
         
                 if (!canSlideOnSlope || !canWalkOnSlope) {

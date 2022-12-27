@@ -54,6 +54,7 @@ public class Player extends SlopeCharacter {
         if (Core.isBindingPressed(Binding.UP)) moveClimbUp();
         if (Core.isBindingPressed(Binding.DOWN)) moveClimbDown();
         if (Core.isBindingPressed(Binding.DOWN)) movePassThroughFloor();
+        if (Core.isBindingPressed(Binding.UP)) moveCeilingCling();
         
         if (Core.isButtonPressed(Buttons.LEFT)) moveSwing(mouseX, mouseY);
     }
@@ -267,6 +268,31 @@ public class Player extends SlopeCharacter {
     
     @Override
     public void eventReleaseGrabLedge(float delta) {
+    
+    }
+    
+    @Override
+    public void eventCeilingClingPushingWall(float delta, float wallContactAngle) {
+    
+    }
+    
+    @Override
+    public void eventCeilingClingStop(float delta) {
+    
+    }
+    
+    @Override
+    public void eventCeilingClingStopping(float previousSwingDelta, float lateralSpeed, float ceilingAngle) {
+    
+    }
+    
+    @Override
+    public void eventCeilingClingMoving(float delta, float lateralSpeed, float ceilingAngle) {
+    
+    }
+    
+    @Override
+    public void eventCeilingClingMovingReversing(float delta, float lateralSpeed, float groundAngle) {
     
     }
 }
