@@ -672,6 +672,9 @@ public abstract class SlopeCharacter extends Entity {
      * The distance that the character must travel vertically to line up with the ledge.
      */
     private float ledgeGrabYadjustment;
+    /**
+     * The ceiling fixture that the character is touching.
+     */
     private Fixture ceilingClingFixture;
     
     public SlopeCharacter(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
