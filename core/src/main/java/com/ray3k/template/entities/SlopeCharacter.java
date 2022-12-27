@@ -245,6 +245,7 @@ public abstract class SlopeCharacter extends Entity {
      * The length of the ray used to check if the character is connected to a wall on the left or right.
      */
     public float wallRayDistance = 20;
+    public float ceilingRayDistance = 90;
     /**
      * The vertical offset of the ray used to check if the character is connected to a wall on the left or right. This is
      * measured from the offset of the foot fixture.
@@ -528,6 +529,9 @@ public abstract class SlopeCharacter extends Entity {
      * The ground fixtures that were touched in this frame.
      */
     private final ObjectSet<Fixture> touchedGroundFixtures = new ObjectSet<>();
+    /**
+     * The ceiling fixtures that were touched in this frame.
+     */
     private final ObjectSet<Fixture> touchedCeilingClingFixtures = new ObjectSet<>();
     /**
      * The ground fixtures that were touched in the last frame.
@@ -599,6 +603,10 @@ public abstract class SlopeCharacter extends Entity {
      * @see SlopeCharacter#moveWallClingRight()
      */
     private boolean inputWallClingRight;
+    /**
+     * Character called moveCeilingCling() for this frame.
+     * @see SlopeCharacter#moveCeilingCling()
+     */
     private boolean inputCeilingCling;
     /**
      * Character called moveClimbUp() for this frame.
@@ -676,6 +684,7 @@ public abstract class SlopeCharacter extends Entity {
      * The ceiling fixture that the character is touching.
      */
     private Fixture ceilingClingFixture;
+    private boolean lastClingingToCeiling;
     
     public SlopeCharacter(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
         this.footOffsetX = footOffsetX;
@@ -1250,6 +1259,11 @@ public abstract class SlopeCharacter extends Entity {
     public abstract void eventCeilingClingMovingReversing(float delta, float lateralSpeed, float groundAngle);
     
     /**
+     * This event is called once when the character releases from clinging to the ceiling.
+     * @param delta
+     */
+    public abstract void eventCeilingClingReleased(float delta);
+    /**
     * This event is called once when the character begins to pass through the bottom side of a passThrough bounds.
     * @param fixture
     * @param fixtureAngle
@@ -1390,7 +1404,24 @@ public abstract class SlopeCharacter extends Entity {
         }
         
         //check if the character is clinging to a ceiling fixture.
+        lastClingingToCeiling = clingingToCeiling;
         clingingToCeiling = allowClingToCeilings && ceilingClingFixture != null && inputCeilingCling;
+        
+        if (!clingingToCeiling && lastClingingToCeiling && inputCeilingCling) {
+            var rayX = p2m(x + footRayOffsetX);
+            var rayY = p2m(y + footRayOffsetY + footRadius + torsoHeight);
+            //raycast above to check for ceiling
+            world.rayCast((fixture, point, normal, fraction) -> {
+                if (!(fixture.getBody().getUserData() instanceof Bounds)) return -1;
+                clingingToCeiling = true;
+                ceilingClingFixture = fixture;
+        
+                //attach if touching a moving platform
+                var bounds = (Bounds) fixture.getBody().getUserData();
+                if (bounds.kinematic) movingPlatformFixtures.add(fixture);
+                return 0;
+            }, rayX, rayY, rayX, rayY + p2m(ceilingRayDistance));
+        }
         
         //Clear attachment to a moving platform if no longer clinging to the side
         if (lastClingingToWall && !clingingToWall) {
@@ -1560,12 +1591,11 @@ public abstract class SlopeCharacter extends Entity {
         else if (clingingToCeiling) {
             movementMode = CEILING_CLINGING;
             gravityY = 0;
-    
+            
             if (touchedCeilingClingFixtures.size == 0) {
                 setMotion(slopeStickForce, ceilingAngle + 180);
             }
             else setSpeed(0);
-            setSpeed(0);
     
             var accelerating = false;
             var stopping = false;
@@ -1737,7 +1767,7 @@ public abstract class SlopeCharacter extends Entity {
         else canJump = grounded && !falling && canWalkOnSlope && !clingingToCeiling || coyoteTimer > 0 || canMidairJump;
     
         //if reaching the top of a wall while wall climbing
-        if (lastClingingToWall && !clingingToWall && inputWallClimbUp) {
+        if (allowClingToWalls && allowClimbWalls && lastClingingToWall && !clingingToWall && inputWallClimbUp) {
             jumping = false;
             falling = true;
             canJump = false;
@@ -1747,7 +1777,8 @@ public abstract class SlopeCharacter extends Entity {
             eventWallClimbReachedTop(delta);
         }
         
-        if (grabbingLedge && inputWallClimbUp) {
+        //if grabbing a ledge and the character presses input to climb up
+        if (allowGrabLedges && grabbingLedge && inputWallClimbUp) {
             jumping = false;
             falling = true;
             canJump = false;
@@ -1755,6 +1786,17 @@ public abstract class SlopeCharacter extends Entity {
             deltaY = ledgeGrabJumpSpeed;
             movingPlatformFixtures.clear();
             eventWallClimbReachedTop(delta);
+        }
+        
+        //if no longer clinging to the ceiling
+        if (allowClingToCeilings && lastClingingToCeiling && !clingingToCeiling) {
+            jumping = false;
+            falling = true;
+            canJump = false;
+            coyoteTimer = 0;
+            deltaY = 0;
+            movingPlatformFixtures.clear();
+            eventCeilingClingReleased(delta);
         }
     
         //if initiating a wall jump
@@ -1840,9 +1882,16 @@ public abstract class SlopeCharacter extends Entity {
             shapeDrawer.line(x + footRayOffsetX, y + footRayOffsetY, x + footOffsetX,
                     y + footOffsetY - footRayDistance);
     
+            //ceiling ray
+            shapeDrawer.setColor(Color.GREEN);
+            shapeDrawer.setDefaultLineWidth(5f);
+            var rayX = x + footRayOffsetX;
+            var rayY = y + footRayOffsetY + torsoHeight + footRadius;
+            shapeDrawer.line(rayX, rayY, rayX, rayY + ceilingRayDistance);
+    
             //wall rays
-            var rayX = x + footRayOffsetX + footRadius;
-            var rayY = y + footRayOffsetY + wallClimbRayYoffset;
+            rayX = x + footRayOffsetX + footRadius;
+            rayY = y + footRayOffsetY + wallClimbRayYoffset;
             shapeDrawer.line(rayX, rayY, rayX + wallRayDistance, rayY);
             rayX = x + footRayOffsetX - footRadius;
             shapeDrawer.line(rayX, rayY, rayX - wallRayDistance, rayY);
@@ -1920,7 +1969,7 @@ public abstract class SlopeCharacter extends Entity {
             }
             
             //add the fixture to the list of moving platforms if the bounds is kinematic
-            if (fixture == footFixture && bounds.kinematic) {
+            if (bounds.kinematic) {
                 movingPlatformFixtures.add(otherFixture);
             }
         }
@@ -2003,7 +2052,10 @@ public abstract class SlopeCharacter extends Entity {
             
             if (fixture == footFixture) {
                 touchedGroundFixtures.remove(otherFixture);
-                movingPlatformFixtures.remove(otherFixture);
+            }
+            
+            if (fixture == torsoFixture) {
+                touchedCeilingClingFixtures.remove(otherFixture);
             }
         }
     }

@@ -296,4 +296,9 @@ public class Player extends SlopeCharacter {
     public void eventCeilingClingMovingReversing(float delta, float lateralSpeed, float groundAngle) {
     
     }
+    
+    @Override
+    public void eventCeilingClingReleased(float delta) {
+    
+    }
 }

@@ -237,6 +237,7 @@ public class GameScreen extends JamScreen {
                     points[points.length - 2] = p2m(x);
                     points[points.length - 1] = p2m(y);
                     bounds = new Bounds(points, true);
+                    bounds.ceilingClingable = true;
                     entityController.add(bounds);
                     bounds.teleport(0, 0);
                     break;
