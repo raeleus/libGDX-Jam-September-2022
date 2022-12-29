@@ -42,6 +42,7 @@ public class Player extends SlopeCharacter {
         movementAnimation = animationJumpFall;
         body.setSleepingAllowed(false);
         allowClingToCeilings = true;
+        allowMagnet = true;
     }
     
     @Override
@@ -58,6 +59,7 @@ public class Player extends SlopeCharacter {
         if (Core.isBindingPressed(Binding.UP)) moveCeilingCling();
         
         if (Core.isButtonPressed(Buttons.LEFT)) moveSwing(mouseX, mouseY);
+        if (Core.isBindingPressed(Binding.SHOOT)) moveMagnet();
     }
     
     @Override
@@ -299,6 +301,36 @@ public class Player extends SlopeCharacter {
     
     @Override
     public void eventCeilingClingReleased(float delta) {
+    
+    }
+    
+    @Override
+    public void eventMagnetPushingWall(float delta, float wallContactAngle) {
+    
+    }
+    
+    @Override
+    public void eventMagnetStop(float delta) {
+    
+    }
+    
+    @Override
+    public void eventMagnetStopping(float previousSwingDelta, float lateralSpeed, float ceilingAngle) {
+    
+    }
+    
+    @Override
+    public void eventMagnetMoving(float delta, float lateralSpeed, float ceilingAngle) {
+    
+    }
+    
+    @Override
+    public void eventMagnetMovingReversing(float delta, float lateralSpeed, float groundAngle) {
+    
+    }
+    
+    @Override
+    public void eventMagnetReleased(float delta) {
     
     }
 }
