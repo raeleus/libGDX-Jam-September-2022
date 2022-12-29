@@ -770,6 +770,12 @@ public abstract class SlopeCharacter extends Entity {
      * The speed that the character jumps from the surface while in magnet mode.
      */
     private float magnetJumpSpeed = 1500;
+    /**
+     * true if the character was magneting last frame.
+     */
+    private boolean lastMagneting;
+    private float magnetNoContactTimer;
+    private float magnetNoContactDelay = .1f;
     
     public SlopeCharacter(float footOffsetX, float footOffsetY, float footRadius, float torsoHeight) {
         this.footOffsetX = footOffsetX;
@@ -1563,6 +1569,7 @@ public abstract class SlopeCharacter extends Entity {
         }
     
         //check if the character is clinging to a fixture in magnet mode
+        lastMagneting = magneting;
         if (!magneting && allowMagnet && inputMagnet && grounded) {
             magneting = true;
             magnetJumping = false;
@@ -1815,6 +1822,16 @@ public abstract class SlopeCharacter extends Entity {
                     else magnetWallAngle = deltaY > 0 ? nextAngle : previousAngle;
                 }
     
+                if (magnetFixture == null && touchedTorsoMagnetFixtures.size == 0) {
+                    magnetNoContactTimer -= delta;
+                    if (magnetNoContactTimer <= 0) {
+                        magneting = false;
+                        magnetGoRight = 0;
+                    }
+                } else {
+                    magnetNoContactTimer = magnetNoContactDelay;
+                }
+                
                 if (touchedMagnetFixtures.size == 0) {
                     setMotion(slopeStickForce, magnetWallAngle + 180);
                 } else setSpeed(0);
@@ -1825,6 +1842,9 @@ public abstract class SlopeCharacter extends Entity {
                 if (inputRight || inputLeft) {
                     if (magnetGoRight == 0) magnetGoRight = inputRight && Utils.isEqual360(magnetWallAngle, 90,
                             90) || inputLeft && Utils.isEqual360(magnetWallAngle, 270, 90) ? -1 : 1;
+                    if (!lastMagneting) {
+                        lateralSpeed = magnetGoRight * Math.abs(lateralSpeed);
+                    }
                     accelerating = Math.signum(lateralSpeed) == magnetGoRight;
                     var acceleration = accelerating ? magnetLateralAcceleration : magnetLateralDeceleration;
                     lateralSpeed = Utils.throttledAcceleration(lateralSpeed, magnetGoRight * magnetLateralMaxSpeed,
@@ -1863,6 +1883,7 @@ public abstract class SlopeCharacter extends Entity {
             } else {
                 if (touchedTorsoMagnetFixtures.size == 0) {
                     magneting = false;
+                    magnetGoRight = 0;
                 }
             }
         }
