@@ -20,6 +20,7 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.ray3k.template.*;
 import com.ray3k.template.OgmoReader.*;
+import com.ray3k.template.Resources.*;
 import com.ray3k.template.entities.*;
 import com.ray3k.template.screens.DialogDebug.*;
 import com.ray3k.template.screens.DialogPause.*;
@@ -105,6 +106,10 @@ public class GameScreen extends JamScreen {
         var ogmo = new OgmoReader();
         ogmo.addListener(new GameOgmoAdapter());
         ogmo.readFile(Gdx.files.internal("levels/test-level.json"));
+        
+        var ragdoll = new RagdollCharacter(SpineZebra.skeletonData, SpineZebra.animationData);
+        ragdoll.setPosition(-300, 500);
+        entityController.add(ragdoll);
     }
     
     @Override

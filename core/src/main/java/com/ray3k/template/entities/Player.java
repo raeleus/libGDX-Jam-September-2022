@@ -13,6 +13,7 @@ public class Player extends SlopeCharacter {
     private Animation movementAnimation;
     private boolean movementAnimationLoop;
     private boolean faceRight;
+    public static Player player;
     
     public Player() {
         super(0, 25, 25, 100);
@@ -43,6 +44,8 @@ public class Player extends SlopeCharacter {
         body.setSleepingAllowed(false);
         allowClingToCeilings = true;
         allowMagnet = true;
+        
+        player = this;
     }
     
     @Override
